@@ -48,7 +48,8 @@ int main(int argc, char *argv[])
   TChain* calEventChain = new TChain("eventTree");
 
   for(Int_t run=firstRun; run<=lastRun; run++){
-    TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/decimatedHeadFile%d.root", run, run);
+    // TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/decimatedHeadFile%d.root", run, run);
+    TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/headFile%d.root", run, run); 
     headChain->Add(fileName);
     fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/gpsFile%d.root", run, run);
     gpsChain->Add(fileName);
@@ -69,62 +70,138 @@ int main(int argc, char *argv[])
   TFile* outFile = new TFile(outFileName, "recreate");
 
   Long64_t nEntries = headChain->GetEntries();
-  Long64_t maxEntry = 5000;
+  Long64_t maxEntry = 0; //20000; //5000;
   Long64_t startEntry = 0;
   if(maxEntry<=0 || maxEntry > nEntries) maxEntry = nEntries;
   std::cout << "Processing " << maxEntry << " of " << nEntries << " entries." << std::endl;
   ProgressBar p(maxEntry-startEntry);
 
   const Double_t deltaT = 1./2.6;
-  const Int_t numSamps = 256;  
+  const Int_t numSamps = 256;
+  // AveragePowerSpectrum* avePowSpecs[AnitaPol::kNotAPol][NUM_SEAVEYS];
   AveragePowerSpectrum* avePowSpecs[AnitaPol::kNotAPol][NUM_SEAVEYS];
+  AveragePowerSpectrum* northPs[AnitaPol::kNotAPol][NUM_SEAVEYS];
+  AveragePowerSpectrum* southPs[AnitaPol::kNotAPol][NUM_SEAVEYS];
   for(Int_t polInd = 0; polInd < AnitaPol::kNotAPol; polInd++){
     for(Int_t ant=0; ant<NUM_SEAVEYS; ant++){
-      avePowSpecs[polInd][ant] = new AveragePowerSpectrum(deltaT, numSamps);
+      TString histBaseName = TString::Format("hAvePowSpec_%d_%d", polInd, ant);
+      avePowSpecs[polInd][ant] = new AveragePowerSpectrum(histBaseName, deltaT, numSamps,
+							  AveragePowerSpectrum::kSummed);
+      histBaseName = TString::Format("hRollingAvePowSpec_%d_%d", polInd, ant);
+      avePowSpecs[polInd][ant] = new AveragePowerSpectrum(histBaseName, deltaT, numSamps,
+							  AveragePowerSpectrum::kRolling);
+      histBaseName = TString::Format("hNorthPs_%d_%d", polInd, ant);
+      northPs[polInd][ant] = new AveragePowerSpectrum(histBaseName, deltaT, numSamps,
+						      AveragePowerSpectrum::kSummed);
+      histBaseName = TString::Format("hSouthPs_%d_%d", polInd, ant);
+      southPs[polInd][ant] = new AveragePowerSpectrum(histBaseName, deltaT, numSamps,
+						      AveragePowerSpectrum::kSummed);
     }
   }
-  const Int_t numEvents = 100;
+
+  // const Int_t numEvents = maxEntry;
+  // headChain->GetEntry(0);
+  // const UInt_t startTime = header->realTime;
+  // headChain->GetEntry(maxEntry-1);  
+  // const UInt_t endTime = header->realTime;
+  // const Int_t numTimeBins = 100;
+
+  
+  AnitaGeomTool* geom = AnitaGeomTool::Instance();
   
   for(Long64_t entry = startEntry; entry < maxEntry; entry++){
     headChain->GetEntry(entry);
-    gpsChain->GetEntryWithIndex(header->realTime);
-    calEventChain->GetEntryWithIndex(header->eventNumber);        
 
+    if((header->trigType & 1)==1) {
+      p++;
+      continue;
+    }
+
+    gpsChain->GetEntryWithIndex(header->realTime);
+    if(pat->heading < 0){
+      p++;
+      continue;
+    }
+
+    calEventChain->GetEntryWithIndex(header->eventNumber);
+
+    
     UsefulAnitaEvent* usefulEvent = new UsefulAnitaEvent(calEvent);
+    Double_t heading = pat->heading;
+
+    Int_t northestPhiSector = -1;
+    Int_t southestPhiSector = -1;
+
+    Double_t northestPhiDeg = 180;
+    Double_t southestPhiDeg = 0;
+    for(Int_t phiSector=0; phiSector < NUM_PHI; phiSector++){
+      Double_t antPhiDeg = geom->getAntPhiPositionRelToAftFore(phiSector)*TMath::RadToDeg();
+      Double_t thisAntHeading = RootTools::getDeltaAngleDeg(heading, antPhiDeg);
+
+      if(TMath::Abs(thisAntHeading) > southestPhiDeg){
+	southestPhiSector = phiSector;
+	southestPhiDeg = thisAntHeading;
+      }
+      if(TMath::Abs(thisAntHeading) < northestPhiDeg){
+	northestPhiSector = phiSector;
+	northestPhiDeg = thisAntHeading;
+      }
+
+      if(TMath::Abs(thisAntHeading) > 180){
+	std::cerr << "think harder! " << thisAntHeading << std::endl;
+      }
+    }
+    // std::cout << heading << "\t" << northestPhiSector << "\t" << southestPhiSector << std::endl;
 
     for(Int_t polInd = 0; polInd < AnitaPol::kNotAPol; polInd++){
       AnitaPol::AnitaPol_t pol = (AnitaPol::AnitaPol_t) polInd;
       for(Int_t ant=0; ant<NUM_SEAVEYS; ant++){
+	Int_t phiSector = ant%NUM_PHI;
+
 	TGraph* gr = usefulEvent->getGraph(ant, pol);
 	TGraph* grInterp = RootTools::interpolateWithStartTime(gr, gr->GetX()[0], deltaT, numSamps);
-	avePowSpecs[polInd][ant]->add(grInterp);
-	if((entry % numEvents) == 0){
-	  TString name = TString::Format("grAvePs_%d_%d_%u", pol, ant, header->eventNumber);
-	  TGraph* grAvePs = avePowSpecs[polInd][ant]->get(name, name);
-	  grAvePs->Write();
-	  delete grAvePs;
+	delete gr;
 
-	  avePowSpecs[polInd][ant]->empty();
+	avePowSpecs[pol][ant]->add(grInterp);
+	if(phiSector==northestPhiSector){
+	  northPs[pol][ant]->add(grInterp);
+	}
+	else if(phiSector==southestPhiSector){
+	  southPs[pol][ant]->add(grInterp);
 	}
 	delete grInterp;
-	delete gr;
       }
     }
-
     
     delete usefulEvent;
 
     p++;
   }
-  
-  outFile->Write();
-  outFile->Close();
 
   for(Int_t polInd = 0; polInd < AnitaPol::kNotAPol; polInd++){
     for(Int_t ant=0; ant<NUM_SEAVEYS; ant++){
+      TString name = TString::Format("grAvePs_%d_%d_%d_%d", polInd, ant, firstRun, lastRun);
+      TGraph* grAvePs = avePowSpecs[polInd][ant]->getScaled(name, name);
+      grAvePs->Write();
+      delete grAvePs;
       delete avePowSpecs[polInd][ant];
+     
+      name = TString::Format("grNorthAvePs_%d_%d_%d_%d", polInd, ant, firstRun, lastRun);
+      grAvePs = northPs[polInd][ant]->getScaled(name, name);
+      grAvePs->Write();
+      delete grAvePs;
+      delete northPs[polInd][ant];
+
+      name = TString::Format("grSouthAvePs_%d_%d_%d_%d", polInd, ant, firstRun, lastRun);
+      grAvePs = southPs[polInd][ant]->getScaled(name, name);
+      grAvePs->Write();
+      delete grAvePs;
+      delete southPs[polInd][ant];      
     }
   }
+
+  outFile->Write();
+  outFile->Close();
 
   return 0;
 }
