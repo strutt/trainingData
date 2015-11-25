@@ -80,22 +80,30 @@ int main(int argc, char *argv[])
   const Int_t numSamps = 256;
   // AveragePowerSpectrum* avePowSpecs[AnitaPol::kNotAPol][NUM_SEAVEYS];
   AveragePowerSpectrum* avePowSpecs[AnitaPol::kNotAPol][NUM_SEAVEYS];
-  AveragePowerSpectrum* northPs[AnitaPol::kNotAPol][NUM_SEAVEYS];
-  AveragePowerSpectrum* southPs[AnitaPol::kNotAPol][NUM_SEAVEYS];
+  // AveragePowerSpectrum* northPs[AnitaPol::kNotAPol][NUM_SEAVEYS];
+  AveragePowerSpectrum* northPs[AnitaPol::kNotAPol];  
+  // AveragePowerSpectrum* southPs[AnitaPol::kNotAPol][NUM_SEAVEYS];
+  AveragePowerSpectrum* southPs[AnitaPol::kNotAPol];
   for(Int_t polInd = 0; polInd < AnitaPol::kNotAPol; polInd++){
+    TString histBaseName = TString::Format("hNorthPs_%d", polInd);
+    northPs[polInd] = new AveragePowerSpectrum(histBaseName, deltaT, numSamps,
+						    AveragePowerSpectrum::kSummed);
+    histBaseName = TString::Format("hSouthPs_%d", polInd);
+    southPs[polInd] = new AveragePowerSpectrum(histBaseName, deltaT, numSamps,
+					       AveragePowerSpectrum::kSummed);
     for(Int_t ant=0; ant<NUM_SEAVEYS; ant++){
-      TString histBaseName = TString::Format("hAvePowSpec_%d_%d", polInd, ant);
+      histBaseName = TString::Format("hAvePowSpec_%d_%d", polInd, ant);
       avePowSpecs[polInd][ant] = new AveragePowerSpectrum(histBaseName, deltaT, numSamps,
 							  AveragePowerSpectrum::kSummed);
-      histBaseName = TString::Format("hRollingAvePowSpec_%d_%d", polInd, ant);
-      avePowSpecs[polInd][ant] = new AveragePowerSpectrum(histBaseName, deltaT, numSamps,
-							  AveragePowerSpectrum::kRolling);
-      histBaseName = TString::Format("hNorthPs_%d_%d", polInd, ant);
-      northPs[polInd][ant] = new AveragePowerSpectrum(histBaseName, deltaT, numSamps,
-						      AveragePowerSpectrum::kSummed);
-      histBaseName = TString::Format("hSouthPs_%d_%d", polInd, ant);
-      southPs[polInd][ant] = new AveragePowerSpectrum(histBaseName, deltaT, numSamps,
-						      AveragePowerSpectrum::kSummed);
+      // histBaseName = TString::Format("hRollingAvePowSpec_%d_%d", polInd, ant);
+      // avePowSpecs[polInd][ant] = new AveragePowerSpectrum(histBaseName, deltaT, numSamps,
+      // // 							  AveragePowerSpectrum::kRolling);
+      // histBaseName = TString::Format("hNorthPs_%d_%d", polInd, ant);
+      // northPs[polInd][ant] = new AveragePowerSpectrum(histBaseName, deltaT, numSamps,
+      // 						      AveragePowerSpectrum::kSummed);
+      // histBaseName = TString::Format("hSouthPs_%d_%d", polInd, ant);
+      // southPs[polInd][ant] = new AveragePowerSpectrum(histBaseName, deltaT, numSamps,
+      // 						      AveragePowerSpectrum::kSummed);
     }
   }
 
@@ -163,11 +171,17 @@ int main(int argc, char *argv[])
 	delete gr;
 
 	avePowSpecs[pol][ant]->add(grInterp);
-	if(phiSector==northestPhiSector){
-	  northPs[pol][ant]->add(grInterp);
-	}
-	else if(phiSector==southestPhiSector){
-	  southPs[pol][ant]->add(grInterp);
+	if(!(ant==4 && pol==AnitaPol::kHorizontal)){
+	  if(phiSector==northestPhiSector){
+	    // for(int i=0; i<129; i++){
+	    //   std::cerr << grInterp->GetY()[i] << ", ";
+	    // }
+	    // std::cerr << std::endl;
+	    northPs[pol]->add(grInterp);
+	  }
+	  else if(phiSector==southestPhiSector){
+	    southPs[pol]->add(grInterp);
+	  }
 	}
 	delete grInterp;
       }
@@ -179,24 +193,38 @@ int main(int argc, char *argv[])
   }
 
   for(Int_t polInd = 0; polInd < AnitaPol::kNotAPol; polInd++){
+    TString name = TString::Format("grNorthAvePs_%d_%d_%d", polInd, firstRun, lastRun);
+    TGraph* grAvePs = northPs[polInd]->getScaled(name, name);
+    // grAvePs = northPs[polInd]->get(name, name);      
+    grAvePs->Write();
+    delete grAvePs;
+    delete northPs[polInd];
+
+    name = TString::Format("grSouthAvePs_%d_%d_%d", polInd, firstRun, lastRun);
+    grAvePs = southPs[polInd]->getScaled(name, name);
+    grAvePs->Write();
+    delete grAvePs;
+    delete southPs[polInd];      
+
     for(Int_t ant=0; ant<NUM_SEAVEYS; ant++){
-      TString name = TString::Format("grAvePs_%d_%d_%d_%d", polInd, ant, firstRun, lastRun);
-      TGraph* grAvePs = avePowSpecs[polInd][ant]->getScaled(name, name);
+      name = TString::Format("grAvePs_%d_%d_%d_%d", polInd, ant, firstRun, lastRun);
+      grAvePs = avePowSpecs[polInd][ant]->getScaled(name, name);
       grAvePs->Write();
       delete grAvePs;
       delete avePowSpecs[polInd][ant];
      
-      name = TString::Format("grNorthAvePs_%d_%d_%d_%d", polInd, ant, firstRun, lastRun);
-      grAvePs = northPs[polInd][ant]->getScaled(name, name);
-      grAvePs->Write();
-      delete grAvePs;
-      delete northPs[polInd][ant];
+      // name = TString::Format("grNorthAvePs_%d_%d_%d_%d", polInd, ant, firstRun, lastRun);
+      // // grAvePs = northPs[polInd][ant]->getScaled(name, name);
+      // grAvePs = northPs[polInd][ant]->get(name, name);      
+      // grAvePs->Write();
+      // delete grAvePs;
+      // delete northPs[polInd][ant];
 
-      name = TString::Format("grSouthAvePs_%d_%d_%d_%d", polInd, ant, firstRun, lastRun);
-      grAvePs = southPs[polInd][ant]->getScaled(name, name);
-      grAvePs->Write();
-      delete grAvePs;
-      delete southPs[polInd][ant];      
+      // name = TString::Format("grSouthAvePs_%d_%d_%d_%d", polInd, ant, firstRun, lastRun);
+      // grAvePs = southPs[polInd][ant]->getScaled(name, name);
+      // grAvePs->Write();
+      // delete grAvePs;
+      // delete southPs[polInd][ant];      
     }
   }
 
