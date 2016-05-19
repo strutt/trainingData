@@ -105,22 +105,10 @@ int main(int argc, char *argv[]){
   UInt_t eventNumber = 0;
   dataQualityTree->Branch("eventNumber", &eventNumber);
 
-  Double_t maxVolts[NUM_POL][NUM_SEAVEYS];  
-  dataQualityTree->Branch("maxVolts",
-			  maxVolts,
-			  TString::Format("maxVolts[%d][%d]/D",
-					  NUM_POL, NUM_SEAVEYS));
-
-  Double_t maxNegSecondDeriv[NUM_POL][NUM_SEAVEYS];  
-  dataQualityTree->Branch("maxNegSecondDeriv",
-			  maxVolts,
-			  TString::Format("maxNegSecondDeriv[%d][%d]/D",
-					  NUM_POL, NUM_SEAVEYS));
-
-  Double_t sumVoltsSquared[NUM_POL][NUM_SEAVEYS];  
-  dataQualityTree->Branch("sumVoltsSquared",
-			  sumVoltsSquared,
-			  TString::Format("sumVoltsSquared[%d][%d]/D",
+  Double_t maxAbsSecondDeriv[NUM_POL][NUM_SEAVEYS];  
+  dataQualityTree->Branch("maxAbsSecondDeriv",
+			  maxAbsSecondDeriv,
+			  TString::Format("maxAbsSecondDeriv[%d][%d]/D",
 					  NUM_POL, NUM_SEAVEYS));
 
   Int_t numPoints[NUM_POL][NUM_SEAVEYS];  
@@ -143,43 +131,21 @@ int main(int argc, char *argv[]){
     headChain->GetEntry(entry);
 
     Int_t isMinBias = header->getTriggerBitADU5() || header->getTriggerBitG12() || header->getTriggerBitSoftExt();
-
     if(isMinBias > 0){
-
+    // {
       calEventChain->GetEntryWithIndex(header->eventNumber);
 
-      UsefulAnitaEvent* usefulEvent = new UsefulAnitaEvent(calEvent);
+      UsefulAnitaEvent* usefulEvent = new UsefulAnitaEvent(calEvent, WaveCalType::kAddPeds);
 
       eventNumber = header->eventNumber;
 
-      const int numFreqs = FancyFFTs::getNumFreqs(cc->numSamples);
-
       for(int pol=0; pol<NUM_POL; pol++){
-	cc->getNormalizedInterpolatedTGraphs(usefulEvent, (AnitaPol::AnitaPol_t) pol);
-
 	for(Int_t ant=0; ant<NUM_SEAVEYS; ant++){
-	  FancyFFTs::doFFT(cc->numSamples, cc->grsResampled[pol][ant]->GetY(), cc->ffts[pol][ant]);
-
-	  cc->simple260MHzSatelliteNotch((AnitaPol::AnitaPol_t) pol, ant);
-	  cc->simple370MHzSatelliteNotch((AnitaPol::AnitaPol_t) pol, ant);
-
-	  Double_t vSq = 0;
-	  for(int freqInd=0; freqInd < numFreqs; freqInd++){
-	    Double_t theNorm = std::norm(cc->ffts[pol][ant][freqInd]);
-	    theNorm = freqInd == numFreqs - 1 ? 0.5*theNorm : theNorm;
-	    vSq += theNorm;
-	  }
-	  vSq /= (cc->numSamples*cc->numSamples*0.5);
-	  vSq *= cc->interpRMS[pol][ant]*cc->interpRMS[pol][ant];
-	  vSq *= cc->numSamples;
-	  // std::cout << vSq << std::endl;
 
 	  TGraph* gr = usefulEvent->getGraph(ant, (AnitaPol::AnitaPol_t) pol);
 
-	  sumVoltsSquared[pol][ant] = vSq;
-	  maxNegSecondDeriv[pol][ant] = -9999;
+	  maxAbsSecondDeriv[pol][ant] = -9999;
 	  numPoints[pol][ant] = gr->GetN();
-	  maxVolts[pol][ant] = -9999;
 
 	  for(int samp = 0; samp < numPoints[pol][ant]; samp++){
 
@@ -188,23 +154,12 @@ int main(int argc, char *argv[]){
 	    if(samp < numPoints[pol][ant] - 2){
 	      Double_t V2 = gr->GetY()[samp+1];
 	      Double_t V3 = gr->GetY()[samp+2];
-	      double thisNegSecondDeriv = 2*V2 - V3 - V;
-	      if(thisNegSecondDeriv > maxNegSecondDeriv[pol][ant]){
-		maxNegSecondDeriv[pol][ant] = thisNegSecondDeriv;
+	      double thisAbsSecondDeriv = TMath::Abs(2*V2 - V3 - V);
+	      if(thisAbsSecondDeriv > maxAbsSecondDeriv[pol][ant]){
+		maxAbsSecondDeriv[pol][ant] = thisAbsSecondDeriv;
 	      }
 	    }
 
-	    if(V > maxVolts[pol][ant]){
-	      maxVolts[pol][ant] = V;
-	    }
-	  }
-
-	  if(maxVolts[pol][ant] < 0){
-	    std::cerr << eventNumber << "\t" << maxVolts[pol][ant] << std::endl;
-	    for(int samp=0; samp < numPoints[pol][ant]; samp++){
-	      std::cerr << gr->GetY()[samp] << ", ";
-	    }
-	    std::cerr << std::endl;
 	  }
 
 	  delete gr;
