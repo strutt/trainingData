@@ -11,7 +11,9 @@ void plotRayleighDistributions(){
   // auto f = TFile::Open("powerSpectraPlots_352_2015-11-23_16-35-02.root");
   // TString fileNames[2] = {"powerSpectraPlots_352_2015-11-23_16-35-02.root", "end"};
   TString fileNames[] = {"powerSpectraPlots_270_2015-11-23_22-43-33.root", "end"};
-  
+  // TString fileNames[] = {"../powerSpectraPlots_352_2015-11-26_12-43-34.root", "end"};
+  // TString fileNames[] = {"../powerSpectraPlots_352_2015-11-26_12-52-16.root", "end"};  
+
   // TString fileNames[] = {"powerSpectraPlots_161_2015-11-23_18-16-54.root", "powerSpectraPlots_145_2015-11-23_18-16-51.root", "powerSpectraPlots_150_2015-11-23_18-16-49.root", "powerSpectraPlots_135_2015-11-23_18-16-46.root", "powerSpectraPlots_156_2015-11-23_18-16-54.root", "powerSpectraPlots_136_2015-11-23_18-16-46.root", "powerSpectraPlots_162_2015-11-23_18-16-56.root", "powerSpectraPlots_127_2015-11-23_18-16-33.root", "powerSpectraPlots_133_2015-11-23_18-16-35.root", "powerSpectraPlots_155_2015-11-23_18-16-55.root", "powerSpectraPlots_134_2015-11-23_18-16-36.root", "powerSpectraPlots_182_2015-11-23_18-42-03.root", "powerSpectraPlots_180_2015-11-23_18-39-11.root", "powerSpectraPlots_183_2015-11-23_18-43-23.root", "powerSpectraPlots_181_2015-11-23_18-39-22.root", "powerSpectraPlots_139_2015-11-23_18-16-52.root", "powerSpectraPlots_128_2015-11-23_18-16-33.root", "powerSpectraPlots_153_2015-11-23_18-16-51.root", "powerSpectraPlots_138_2015-11-23_18-16-51.root", "powerSpectraPlots_140_2015-11-23_18-16-50.root", "powerSpectraPlots_132_2015-11-23_18-16-34.root", "powerSpectraPlots_137_2015-11-23_18-16-51.root", "powerSpectraPlots_151_2015-11-23_18-16-53.root", "powerSpectraPlots_179_2015-11-23_18-34-25.root", "powerSpectraPlots_141_2015-11-23_18-16-52.root", "powerSpectraPlots_154_2015-11-23_18-16-53.root", "powerSpectraPlots_159_2015-11-23_18-16-58.root", "powerSpectraPlots_198_2015-11-23_19-08-26.root", "powerSpectraPlots_131_2015-11-23_18-16-35.root", "powerSpectraPlots_172_2015-11-23_18-22-25.root", "powerSpectraPlots_148_2015-11-23_18-16-57.root", "powerSpectraPlots_197_2015-11-23_19-06-01.root", "powerSpectraPlots_199_2015-11-23_19-10-47.root", "powerSpectraPlots_190_2015-11-23_18-52-00.root", "powerSpectraPlots_175_2015-11-23_18-29-02.root", "powerSpectraPlots_352_2015-11-23_16-35-02.root", "powerSpectraPlots_152_2015-11-23_18-00-03.root", "end"};
 
 
@@ -36,7 +38,6 @@ void plotRayleighDistributions(){
 
     auto f = TFile::Open("powSpecRootFiles/" + fileNames[fileInd]);
 
-    gROOT->ProcessLine(".ls");
     const Int_t ant = 47;
     const Int_t polInd = 1;
     const int run = 270;
@@ -54,105 +55,122 @@ void plotRayleighDistributions(){
     grTitle += "; Frequency (MHz); Power Spectra Density (dB)";
     gr->SetTitle(grTitle);
     gr->SetMaximum(maxPow_dB);
-    gr->SetMinimum(minPow_dB);	
+    gr->SetMinimum(minPow_dB);
 
     TH2D* h2 = nullptr;
-  
     Int_t count1 = 0;
     TGraph* grChiSquarePerNDF = new TGraph();
+    TGraph* grMeanFromFit = new TGraph();
+  
     TCanvas* c1 = new TCanvas();
     TString baseName = "hAvePowSpec";
     for(Int_t freqInd=0; freqInd<numFreqs; freqInd++){
-      if(freqs[freqInd] > 0 && freqs[freqInd] < 1.3){
-      // if(true){      
+      // if(freqInd!=23) continue;
+      // if(freqs[freqInd] > 0 && freqs[freqInd] < 1.3){
+      if(freqs[freqInd] > 0.2 && freqs[freqInd] < 0.3){	
+	// if(true){      
 	TString histName = TString::Format("%s_%d_%d_%d_%d", baseName.Data(), polInd, ant, freqInd, numFreqs);
 	auto h = (TH1D*) f->Get(histName);
-	h->Rebin(4);
+	h->Rebin(8);
 	Int_t nx = h->GetNbinsX();
       
 	if(h2==NULL){
-	  TString histName2 = TString::Format("%s2_%d_%d_%d_%d", baseName.Data(), polInd, ant, freqInd, numFreqs);	  
+	  TString histName2 = TString::Format("%s2_%d_%d_%d_%d", baseName.Data(), polInd, ant, freqInd, numFreqs);
 	  auto h2Title = TString::Format("Sqrt(PSD) as a function of frequency - %d%s%s run %d", phi, ringNames[ring].Data(), polNames[polInd].Data(), run);
 	  h2Title += ";Frequency (MHz); sqrt(PSD) (some weird units)";
 	  h2 = new TH2D(histName2,
 			h2Title,
 			numFreqs, 1e3*freqs[0], 1e3*numFreqs*(freqs[1]-freqs[0]),
-			nx, h->GetBinLowEdge(1), h->GetBinLowEdge(nx+1));
+			64, 0, 2048);
 	  h2->GetXaxis()->SetNoExponent(1);
-	  h2->GetYaxis()->SetNoExponent(1);		      	  
+	  h2->GetYaxis()->SetNoExponent(1);
 	}
-	for(int binx=1; binx<=nx; binx++){
-	  h2->SetBinContent(freqInd+1, binx, h->GetBinContent(binx));
-	}
-      
-	if(h->Integral() > 0){
-	  // auto ct = new TCanvas();
 
-	  TString fitName = "fit_" + histName;
+	// TCanvas* ct = nullptr;
+	TCanvas* ct = new TCanvas();	
 	
-	  Double_t lowEdge = h->GetBinLowEdge(1);
-	  Double_t highEdge = h->GetBinLowEdge(h->GetNbinsX());
-	  // cout << lowEdge << "\t" << highEdge << endl;
-	  TF1* fit = new TF1(fitName, "[0]*x*exp(-x*x/(2*[1]*[1]))", lowEdge, highEdge);
-	  fit->SetParameters(1, h->GetMean());
-	  // auto h = (TH1D*) f->Get(TString::Format("hAvePowSpecs_0_23_%d_%d", freqInd, numFreqs));
-	  TString opt = count1 == 0 ? "" : "same";
+	TString fitName = "fit_" + histName;
+	Double_t lowEdge = h->GetBinLowEdge(1);
+	Double_t highEdge = h->GetBinLowEdge(h->GetNbinsX()+1);
+	// cout << lowEdge << "\t" << highEdge << endl;
+
+	auto fit = AveragePowerSpectrum::makeRayleighFunction(fitName, lowEdge, highEdge);
+	fit->SetParameter(1, 0.75*h->GetMean());
+	
+	h->GetXaxis()->SetNoExponent(1);
+	h->GetYaxis()->SetNoExponent(1);
+
+	h->Fit(fitName, "Q", "0", 0, 1.5*h->GetMean());
+
+	Double_t freq = 1e3*freqs[freqInd];
+	for(int binx=1; binx<=nx; binx++){
+	  Double_t sqrtPSD = h->GetXaxis()->GetBinCenter(binx);
+	  Double_t numEntries =  h->GetBinContent(binx);
+
+	  Double_t fitVal = fit->Eval(sqrtPSD);
+	  h2->Fill(freq, sqrtPSD, numEntries);
+	}
+
+	
+
+	// TCanvas* ct = nullptr;
+
+	  
+	// auto h = (TH1D*) f->Get(TString::Format("hAvePowSpecs_0_23_%d_%d", freqInd, numFreqs));
+	TString opt = "e";
+	Double_t chiSq = fit->GetChisquare();
+	// std::cout << freqInd << "\t" << chiSq << "\t" << fit->GetNDF() << std::endl;
+	chiSq /= fit->GetNDF();
+	grChiSquarePerNDF->SetPoint(grChiSquarePerNDF->GetN(), freqs[freqInd]*1e3, chiSq);
+
+
+	// TGraph* grTest = new TGraph();
+	// Double_t mean = h->GetMean();
+	// Int_t counter=0;
+	// for(int binx=nx; binx>=2; binx--){
+	//   TString name99 = TString::Format("clone%d", binx);	  
+	//   auto hClone = (TH1D*) h->Clone(name99);
+	//   auto f2 = (TF1*) fit->Clone();
+	//   for(int binxx=nx; binxx>=binx; binxx--){
+	//     hClone->SetBinContent(binxx,0);
+	//     hClone->SetBinError(binxx,0);
+	//   }
+	//   f2->SetParameter(1, mean);
+	//   TString name = TString::Format("fit%d", binx);
+	//   f2->SetName(name);
+	//   hClone->Fit(name, "Q", "0");//, 0, 1.5*h->GetMean());
+	//   if(f2->GetNDF() > 0){
+	//     grTest->SetPoint(grTest->GetN(), counter, f2->GetChisquare() / f2->GetNDF());
+	//     counter++;
+	//   }
+	//   new TCanvas();
+	//   hClone->Draw();
+	//   f2->Draw("same");
+	// }
+	// new TCanvas();
+	// grTest->Draw();
+	
+	
+	if(ct!=NULL){
+	  ct->Clear();
 	  h->Draw(opt);
-	  h->Fit(fitName, "Q");
-	  Double_t chiSq = fit->GetChisquare();
-	  chiSq /= fit->GetNDF();
-	  if(freqInd > 0 && freqInd < numFreqs-1){
-	    grChiSquarePerNDF->SetPoint(count1, freqs[freqInd]*1e3, chiSq);
-	    count1++;
-	  }
-	  // h->Draw(opt);
-	  // ct->SetLogy(1);
+	  fit->Draw("lsame");
+	  //	  gPad->SetLogy(1);
 	}
       }
     }
-
+    delete c1;
+    auto c2 = new TCanvas();
     h2->Draw("colz");
     gPad->SetLogz(1);
-
-    TGraph* grChiSqNdf = new TGraph();
-    
-    auto c3 = new TCanvas();
-    
-    for(int freqInd=0; freqInd < numFreqs; freqInd++){
-      // if(!(freqInd== 80 || freqInd==24)) continue;
-
-      // auto c1 = new TCanvas();
-
-      TString histName = TString::Format("hAvePowSpec_%d_%d_%d_%d", polInd, ant, freqInd, numFreqs);
-      auto h = (TH1D*) f->Get(histName);
-      auto title = TString::Format("Distribution of Sqrt{PSD} for %4.2lf MHz", 1e3*freqs[freqInd]);
-      title += "; #sqrt{Power} (some weird units); Number of events";
-      h->SetTitle(title);
-      h->GetXaxis()->SetNoExponent(1);
-      h->GetYaxis()->SetNoExponent(1);      
-      // h->Rebin(4);
-      // TString opt = ant==0 ? "e" : "esame"; 
-      TString opt = "e";
-      h->Draw(opt);
-
-      TString fitName = "fit_" + histName;
-      TF1* fit = AveragePowerSpectrum::makeRayleighFunction(fitName, 0, h->GetXaxis()->GetBinLowEdge(h->GetNbinsX()+1));
-      fit->SetParameter(1, h->GetMean());
-      h->Fit(fit);
-      Double_t chiSq = fit->GetChisquare();
-      chiSq /= fit->GetNDF();
-
-      grChiSqNdf->SetPoint(grChiSqNdf->GetN(), 1e3*freqs[freqInd], chiSq);
-    }    
-    
-    // RootTools::saveCanvas(c2, TString::Format("images/northSouth%d", run));
-
+              
     c0->cd();
-    grChiSqNdf->SetLineColor(kRed);
-    grChiSqNdf->Draw("lsame");    
+    grChiSquarePerNDF->SetLineColor(kRed);
+    grChiSquarePerNDF->Draw("lsame");
+    
     TLegend* l = new TLegend(0.8, 0.8, 1, 1);
     l->AddEntry(gr, "PSD", "l");
-    l->AddEntry(grChiSqNdf, "#chi^{2}/NDF Rayleigh Fit", "l");
+    l->AddEntry(grChiSquarePerNDF, "#chi^{2}/NDF Rayleigh Fit", "l");
     l->Draw();
     // f->Close();    
     fileInd++;

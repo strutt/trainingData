@@ -41,7 +41,7 @@ FFTFLAG =
 endif
 
 #Generic and Site Specific Flags
-CXXFLAGS     = -g -fPIC $(ROOTCFLAGS) $(FFTFLAG) $(SYSINCLUDES) $(INC_ANITA_UTIL) #-std=c++11 
+CXXFLAGS     = -g -O2 -fPIC $(ROOTCFLAGS) $(FFTFLAG) $(SYSINCLUDES) $(INC_ANITA_UTIL) #-std=c++11 
 LDFLAGS      = -g
 
 LIBS          = $(ROOTLIBS) -lMathMore -lMinuit -lGpad $(FFTLIBS) $(SYSLIBS) $(LD_ANITA_UTIL)
@@ -67,9 +67,9 @@ CXXFLAGS += -Wall -Wextra -Wshadow -Werror #-Wpedantic
 endif
 
 
-OBJS = SunPos.o
+OBJS = 
 
-BINARIES = imagePeakHilbertPeak getWaisHeadings powerSpectra initialDistributions plotInitialDistributions testSunPos
+BINARIES = imagePeakHilbertPeak getWaisHeadings powerSpectra initialDistributions plotInitialDistributions project plotMinBiasDistributions makeDataQualityTrees plotDataQuality templateSelfTriggeredBlast generateAngularResolutionTree
 
 #Now the bits we're actually compiling
 all: $(OBJS) $(BINARIES) commit

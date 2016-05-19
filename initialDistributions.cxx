@@ -29,6 +29,8 @@
 #include "AnitaEventSummary.h"
 #include "FFTtools.h"
 
+#include <signal.h>
+
 int main(int argc, char *argv[])
 {
 
@@ -45,7 +47,6 @@ int main(int argc, char *argv[])
   const Int_t lastRun = firstRun; //argc==3 ? atoi(argv[2]) : firstRun;
 
   CrossCorrelator* cc = new CrossCorrelator();
-
 
   TChain* headChain = new TChain("headTree");
   TChain* gpsChain = new TChain("adu5PatTree");
@@ -115,6 +116,11 @@ int main(int argc, char *argv[])
 
     headChain->GetEntry(entry);
 
+    // if(header->eventNumber!=60835259){
+    //   p++;
+    //   continue;
+    // }
+
     Int_t isMinBias = header->getTriggerBitADU5() || header->getTriggerBitG12() || header->getTriggerBitSoftExt();
     if(isMinBias > 0){
     // {
@@ -148,6 +154,7 @@ int main(int argc, char *argv[])
 				eventSummary->peak[pol][pointInd].phi,
 				eventSummary->peak[pol][pointInd].theta);
 
+
 	  const Int_t coherentDeltaPhi = 2;
 	  TGraph* grGlobal0 = cc->makeCoherentlySummedWaveform(pol,
 							       eventSummary->peak[pol][pointInd].phi,
@@ -164,15 +171,35 @@ int main(int argc, char *argv[])
 
 	  pointInd++;
 
+	  // Double_t peakValue;
+	  // Double_t peakPhiDeg;
 
+	  // Double_t peakThetaDeg;
+	  // TH2D* hMap = cc->getMap(pol, peakValue, peakPhiDeg, peakThetaDeg);
+	  // TString n1 = hMap->GetName();	  
+	  // hMap->SetName(n1 + TString::Format("_%d", peakInd));
+	  // hMap->Write();
+	  // delete hMap;
 
+	  // std::cerr << " main loop " << peakValue << "\t" <<  peakPhiDeg << "\t" <<  peakThetaDeg << std::endl;
 
 	
 	  cc->getFinePeakInfo(pol, peakInd, 
 			      eventSummary->peak[pol][pointInd].value,
 			      eventSummary->peak[pol][pointInd].phi,
 			      eventSummary->peak[pol][pointInd].theta);
-      
+
+	  // std::cerr << "Zoom " << eventSummary->peak[pol][pointInd].value << "\t"
+	  // 	    << eventSummary->peak[pol][pointInd].phi << "\t"
+	  // 	    << eventSummary->peak[pol][pointInd].theta << std::endl;
+
+	  // TH2D* hMap2 = cc->getZoomMap(pol);
+	  // TString n2 = hMap2->GetName();	  
+	  // hMap2->SetName(n2 + TString::Format("_%d", peakInd));
+	  // hMap2->Write();
+	  // delete hMap2;
+
+	  
 	  TGraph* grZ0 = cc->makeUpsampledCoherentlySummedWaveform(pol,
 								   eventSummary->peak[pol][pointInd].phi,
 								   eventSummary->peak[pol][pointInd].theta,
@@ -209,7 +236,8 @@ int main(int argc, char *argv[])
       eventSummaryTree->Fill();
       delete eventSummary;
     }
-    p++;    
+    // p++;
+    p.inc(entry, nEntries);
   }
   
   outFile->Write();

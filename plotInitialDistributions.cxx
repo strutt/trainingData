@@ -51,16 +51,17 @@ int main(int argc, char *argv[])
     if(run>=257 && run<=263){
       continue;
     }
-    if(run == 198 || run == 287){
-      continue;
-    }
+    // if(run == 198 || run == 287){
+    //   continue;
+    // }
     
-    TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/decimatedHeadFile%d.root", run, run);
+    // TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/decimatedHeadFile%d.root", run, run);
+    TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/headFile%d.root", run, run);
     headChain->Add(fileName);
     fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/gpsEvent%d.root", run, run);
     gpsChain->Add(fileName);
-    // fileName = TString::Format("~/UCL/ANITA/anita3Analysis/decimatedDistributions/initialDistributions260MHzAnd370MHzFiltered/initialDistributionsPlots_%d_*.root", run);
-    fileName = TString::Format("~/UCL/ANITA/anita3Analysis/decimatedDistributions/initialDistributionPlots/initialDistributionsPlots_%d_*.root", run);    
+    fileName = TString::Format("~/UCL/ANITA/anita3Analysis/decimatedDistributions/initialDistributions260MHzAnd370MHzFiltered/initialDistributionsPlots_%d_*.root", run);
+    // fileName = TString::Format("~/UCL/ANITA/anita3Analysis/decimatedDistributions/initialDistributionPlots/initialDistributionsPlots_%d_*.root", run);    
     eventSummaryChain->Add(fileName);
   }
 
@@ -123,7 +124,7 @@ int main(int argc, char *argv[])
   TH2D* hImagePeakHilbertPeak[NUM_POL][numTrigTypes][numSunDirs];
   
   const int numBinsPhi = 420;
-  const int numBinsTheta = numBinsPhi/2;  
+  const int numBinsTheta = numBinsPhi/2;
   const int numTimeBins = 1024*2;
   const double maxDirWrtNorth = 180;
   const double minDirWrtNorth = -180;
@@ -131,12 +132,11 @@ int main(int argc, char *argv[])
   const double minTheta = -90;
 
   // const double deltaSolarPhiDegCut = 20; // degrees
-  const double deltaSolarPhiDegCut = 10; // degrees  
+  const double deltaSolarPhiDegCut = 10; // degrees
 
   const Int_t numImagePeakBins = 1024;
   const Int_t numHilbertPeakBins = 1024;
   const Double_t maxHilbertPeak = 1000;
-
   
   for(int pol=0; pol<NUM_POL; pol++){
     for(int trig=0; trig < numTrigTypes; trig++){
@@ -197,8 +197,16 @@ int main(int argc, char *argv[])
 
   TH1D* hDeltaSolarPhiDeg[NUM_POL];
   TH1D* hDeltaSolarThetaDeg[NUM_POL];
-  TH1D* hDeltaSolarPhiDegZoom[NUM_POL];
-  TH1D* hDeltaSolarThetaDegZoom[NUM_POL];
+  TH2D* hDeltaSolarPhiDegZoom[NUM_POL];
+  TH2D* hDeltaSolarThetaDegZoom[NUM_POL];
+  TH1D* hThetaDeg[NUM_POL];
+
+  TH2D* hDeltaSolarThetaDegZoomVsTheta[NUM_POL];
+  TH2D* hDeltaSolarThetaDegZoomVsPhi[NUM_POL];
+  TH2D* hDeltaSolarThetaDegZoomVsTimeOfDay[NUM_POL];
+  TH2D* hDeltaSolarPhiDegZoomVsTheta[NUM_POL];
+  TH2D* hDeltaSolarPhiDegZoomVsPhi[NUM_POL];
+  TH2D* hDeltaSolarPhiDegZoomVsTimeOfDay[NUM_POL];  
 
   for(int pol=0; pol<NUM_POL; pol++){
     TString name = pol==AnitaPol::kHorizontal ? "hDeltaSolarPhiDegHPol" : "hDeltaSolarPhiDegVPol";
@@ -221,47 +229,125 @@ int main(int argc, char *argv[])
     name = pol==AnitaPol::kHorizontal ? "hDeltaSolarPhiDegZoomHPol" : "hDeltaSolarPhiDegZoomVPol";
     title = "#delta#phi_{sun} ";
     title += pol==AnitaPol::kHorizontal ? "HPol" : "VPol";
-    title += "; #delta#phi_{sun} (Degrees); Number of events / bin";
+    title += "; Measured #phi (Degrees); #delta#phi_{sun} (Degrees); Number of events / bin";
 
-    hDeltaSolarPhiDegZoom[pol] = new TH1D(name, title,
-				      numBinsPhi, -20, 20);
+    hDeltaSolarPhiDegZoom[pol] = new TH2D(name, title,
+					  numBinsPhi, 0, 360,
+					  numBinsPhi, -10, 10);
 
 
     name = pol==AnitaPol::kHorizontal ? "hDeltaSolarThetaDegZoomHPol" : "hDeltaSolarThetaDegZoomVPol";
     title = "#delta#theta_{sun} ";
     title += pol==AnitaPol::kHorizontal ? "HPol" : "VPol";
-    title += "; #delta#theta_{sun} (Degrees); Number of events / bin";
+    title += "; Measured #phi (Degrees); #delta#theta_{sun} (Degrees); Number of events / bin";
 
-    hDeltaSolarThetaDegZoom[pol] = new TH1D(name, title,
-					numBinsPhi, -20, 20);
+    hDeltaSolarThetaDegZoom[pol] = new TH2D(name, title,
+					    numBinsPhi, -0, 360,
+					    numBinsPhi, -10, 10);
 
+    name = pol==AnitaPol::kHorizontal ? "hThetaDegHPol" : "hThetaDegVPol";
+    title = "Min bias measured #theta ";
+    title += pol==AnitaPol::kHorizontal ? "HPol" : "VPol";
+    title += "#theta (Degrees); Number of events / bin";
+
+    hThetaDeg[pol] = new TH1D(name, title,
+			      numBinsPhi, -90, 90);
+
+
+    name = "hDeltaSolarThetaDegZoomVsTheta";
+    name += pol==AnitaPol::kHorizontal ? "HPol" : "VPol";
+    title = "#delta#theta_{sun} vs. #theta ";
+    title += pol==AnitaPol::kHorizontal ? "HPol" : "VPol";
+    title += "; #theta (Degrees); #delta#theta_{sun}; Number of events / bin";
+
+    hDeltaSolarThetaDegZoomVsTheta[pol] = new TH2D(name, title,
+						   numBinsPhi, -90, 90,
+						   numBinsPhi, -10, 10);
+
+
+    name = "hDeltaSolarThetaDegZoomVsPhi";
+    name += pol==AnitaPol::kHorizontal ? "HPol" : "VPol";
+    title = "#delta#theta_{sun} vs. #phi ";
+    title += pol==AnitaPol::kHorizontal ? "HPol" : "VPol";
+    title += "; #phi (Degrees); #delta#theta_{sun}; Number of events / bin";
+
+    hDeltaSolarThetaDegZoomVsPhi[pol] = new TH2D(name, title,
+						 numBinsPhi, 0, 360,
+						 numBinsPhi, -10, 10);
+
+    name = "hDeltaSolarThetaDegZoomVsTimeOfDay";
+    name += pol==AnitaPol::kHorizontal ? "HPol" : "VPol";
+    title = "#delta#theta_{sun} vs. timeOfDay ";
+    title += pol==AnitaPol::kHorizontal ? "HPol" : "VPol";
+    title += "; Time of day; #delta#theta_{sun}; Number of events / bin";
+
+    hDeltaSolarThetaDegZoomVsTimeOfDay[pol] = new TH2D(name, title,
+						       1024, 0, 24*60*60,
+						       numBinsPhi, -10, 10);
+
+    name = "hDeltaSolarPhiDegZoomVsTheta";
+    name += pol==AnitaPol::kHorizontal ? "HPol" : "VPol";
+    title = "#delta#phi_{sun} vs. #theta ";
+    title += pol==AnitaPol::kHorizontal ? "HPol" : "VPol";
+    title += "; #theta (Degrees); #delta#phi_{sun}; Number of events / bin";
+
+    hDeltaSolarPhiDegZoomVsTheta[pol] = new TH2D(name, title,
+						   numBinsPhi, -90, 90,
+						   numBinsPhi, -10, 10);
+
+
+    name = "hDeltaSolarPhiDegZoomVsPhi";
+    name += pol==AnitaPol::kHorizontal ? "HPol" : "VPol";
+    title = "#delta#phi_{sun} vs. #phi ";
+    title += pol==AnitaPol::kHorizontal ? "HPol" : "VPol";
+    title += "; #phi (Degrees); #delta#phi_{sun}; Number of events / bin";
+
+    hDeltaSolarPhiDegZoomVsPhi[pol] = new TH2D(name, title,
+						 numBinsPhi, 0, 360,
+						 numBinsPhi, -10, 10);
+
+    name = "hDeltaSolarPhiDegZoomVsTimeOfDay";
+    name += pol==AnitaPol::kHorizontal ? "HPol" : "VPol";
+    title = "#delta#phi_{sun} vs. timeOfDay ";
+    title += pol==AnitaPol::kHorizontal ? "HPol" : "VPol";
+    title += "; Time of day; #delta#phi_{sun}; Number of events / bin";
+
+    hDeltaSolarPhiDegZoomVsTimeOfDay[pol] = new TH2D(name, title,
+						       1024, 0, 24*60*60,
+						       numBinsPhi, -10, 10);
+    
   }
 
-
-
-  TGraph* grSunPhiDeg = new TGraph();
-  TGraph* grSunThetaDeg = new TGraph();
+  // TGraph* grSunPhiDeg = new TGraph();
+  // TGraph* grSunThetaDeg = new TGraph();
   
   for(Long64_t entry = startEntry; entry < maxEntry; entry++){
     eventSummaryChain->GetEntry(entry);
     headChain->GetEntryWithIndex(eventSummary->eventNumber);
     gpsChain->GetEntryWithIndex(eventSummary->eventNumber);
 
-    UsefulAdu5Pat usefulPat(pat);
+    // UsefulAdu5Pat usefulPat(pat);
     // Double_t sunHeading = -1*usefulPat.getAzimuthOfSunRelativeToNorth();
     // Double_t solarPhiDeg = usefulPat.getAzimuthOfSun();
     Double_t solarPhiDeg, solarThetaDeg;
-    usefulPat.getSunPosition(solarPhiDeg, solarThetaDeg);
+
+    // usefulPat.getSunPosition(solarPhiDeg, solarThetaDeg);
+    solarPhiDeg = eventSummary->sun.phi;
+    solarThetaDeg = eventSummary->sun.theta;
 
     // std::cerr << pat->heading - solarPhiDeg << "\t" << usefulPat.getAzimuthOfSunRelativeToNorth() << std::endl;
-    if((entry % 16)==0){
-      grSunPhiDeg->SetPoint(grSunPhiDeg->GetN(), header->realTime, pat->heading - solarPhiDeg);
-      grSunThetaDeg->SetPoint(grSunThetaDeg->GetN(), header->realTime, solarThetaDeg);    
-    }
+    // if((entry % 16)==0){
+    //   grSunPhiDeg->SetPoint(grSunPhiDeg->GetN(), header->realTime, pat->heading - solarPhiDeg);
+    //   grSunThetaDeg->SetPoint(grSunThetaDeg->GetN(), header->realTime, solarThetaDeg);
+    // }
     
     for(Int_t polInd=0; polInd < NUM_POL; polInd++){
 
       Double_t recoPhiDeg = eventSummary->peak[polInd][1].phi;
+
+      if(recoPhiDeg < 0) recoPhiDeg += 360;
+      if(recoPhiDeg >= 360) recoPhiDeg -= 360;      
+      
       Double_t recoThetaDeg = eventSummary->peak[polInd][1].theta;
 
       Double_t directionWrtNorth = pat->heading - recoPhiDeg;
@@ -278,9 +364,12 @@ int main(int argc, char *argv[])
       }
 
       Int_t trig = eventSummary->flags.isMinBiasTrigger > 0 ? 1 : 0;
+
+      // std::cerr << header->eventNumber << "\t" << trig << std::endl;
       // Int_t sun = TMath::Abs(deltaSolarPhiDeg) > deltaSolarPhiDegCut ? 0 : 1;
       // Int_t sun = TMath::Abs(deltaSolarPhiDeg) > deltaSolarPhiDegCut ? 0 : 1;
       Int_t sun = TMath::Abs(deltaSolarAngleDeg) > deltaSolarPhiDegCut ? 0 : 1;
+      // Int_t sun = TMath::Abs(deltaSolarPhiDeg) > deltaSolarPhiDegCut ? 0 : 1;      
       // Int_t upDir = recoThetaDeg > 0 ? 0 : 1
 
       // UInt_t realTime = header->realTime;
@@ -306,14 +395,20 @@ int main(int argc, char *argv[])
       hPeakTheta[polInd][trig][sun]->Fill(header->realTime,
 					  recoThetaDeg);
 
-      // const UInt_t timeCut1Low  = 1419000000;
-      // const UInt_t timeCut1High = 1419600000;
-      // const UInt_t timeCut2Low  = 1419800000;
-      // const UInt_t timeCut2High = 1420280000;      
-      // UInt_t realTime = header->realTime;
-      // if((realTime >= timeCut1Low && realTime < timeCut1High) ||
-      // 	 (realTime >= timeCut2Low && realTime < timeCut2High)){
-      {
+
+
+      const int numCutTimes = 4;
+      Double_t keepTimesLow[numCutTimes] = {1419000000, 1419192000, 1419458000, 1419800000};
+      Double_t keepTimesHigh[numCutTimes] = {1419185000, 1419450000, 1419600000, 1420280000};  
+      UInt_t realTime = header->realTime;
+      bool passCuts = false;
+
+      for(int cut=0; cut < numCutTimes; cut++){
+	passCuts = passCuts || (realTime >= keepTimesLow[cut] && realTime < keepTimesHigh[cut]);
+	if(passCuts) break;
+      }
+      if(!passCuts){
+      // {
 	hImagePeakHilbertPeak[polInd][trig][sun]->Fill(eventSummary->peak[polInd][1].value,
 						       eventSummary->coherent[polInd][1].peakHilbert);
       }
@@ -323,8 +418,18 @@ int main(int argc, char *argv[])
 	hDeltaSolarPhiDeg[polInd]->Fill(deltaSolarPhiDeg);
 	hDeltaSolarThetaDeg[polInd]->Fill(deltaSolarThetaDeg);
 
-	hDeltaSolarPhiDegZoom[polInd]->Fill(deltaSolarPhiDeg);
-	hDeltaSolarThetaDegZoom[polInd]->Fill(deltaSolarThetaDeg);	
+	hDeltaSolarPhiDegZoom[polInd]->Fill(recoPhiDeg, deltaSolarPhiDeg);
+	hDeltaSolarThetaDegZoom[polInd]->Fill(recoPhiDeg, deltaSolarThetaDeg);
+	hThetaDeg[polInd]->Fill(recoThetaDeg);
+	
+	if(sun){
+	  hDeltaSolarThetaDegZoomVsTheta[polInd]->Fill(recoThetaDeg, deltaSolarThetaDeg);
+	  hDeltaSolarThetaDegZoomVsPhi[polInd]->Fill(recoPhiDeg, deltaSolarThetaDeg);
+	  hDeltaSolarThetaDegZoomVsTimeOfDay[polInd]->Fill(pat->timeOfDay/1000, deltaSolarThetaDeg);
+	  hDeltaSolarPhiDegZoomVsTheta[polInd]->Fill(recoThetaDeg, deltaSolarPhiDeg);
+	  hDeltaSolarPhiDegZoomVsPhi[polInd]->Fill(recoPhiDeg, deltaSolarPhiDeg);
+	  hDeltaSolarPhiDegZoomVsTimeOfDay[polInd]->Fill(pat->timeOfDay/1000, deltaSolarPhiDeg);
+	}	
       }
     }
     hHeading->Fill(header->realTime, pat->heading);
@@ -333,12 +438,12 @@ int main(int argc, char *argv[])
   }
 
 
-  grSunPhiDeg->SetName("grSunPhiDeg");
-  grSunPhiDeg->SetTitle("Predicted sun #phi (Degrees)");
-  grSunThetaDeg->SetName("grSunThetaDeg");
-  grSunThetaDeg->SetTitle("Predicted sun #theta (Degrees)");
-  grSunPhiDeg->Write();
-  grSunThetaDeg->Write();
+  // grSunPhiDeg->SetName("grSunPhiDeg");
+  // grSunPhiDeg->SetTitle("Predicted sun #phi (Degrees)");
+  // grSunThetaDeg->SetName("grSunThetaDeg");
+  // grSunThetaDeg->SetTitle("Predicted sun #theta (Degrees)");
+  // grSunPhiDeg->Write();
+  // grSunThetaDeg->Write();
   
   outFile->Write();
   outFile->Close();

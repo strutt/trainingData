@@ -105,17 +105,29 @@ int main(int argc, char *argv[]){
   UInt_t eventNumber = 0;
   dataQualityTree->Branch("eventNumber", &eventNumber);
 
-  Double_t maxAbsSecondDeriv[NUM_POL][NUM_SEAVEYS];  
+  Double_t maxVolts[NUM_POL][NUM_SEAVEYS];
+  dataQualityTree->Branch("maxVolts",
+			  maxVolts,
+			  TString::Format("maxVolts[%d][%d]/D",
+					  NUM_POL, NUM_SEAVEYS));
+
+  Double_t maxAbsSecondDeriv[NUM_POL][NUM_SEAVEYS];
   dataQualityTree->Branch("maxAbsSecondDeriv",
 			  maxAbsSecondDeriv,
 			  TString::Format("maxAbsSecondDeriv[%d][%d]/D",
 					  NUM_POL, NUM_SEAVEYS));
 
-  Int_t numPoints[NUM_POL][NUM_SEAVEYS];  
+  Double_t outerDiff[NUM_POL][NUM_SEAVEYS];  
+  dataQualityTree->Branch("outerDiff",
+			  outerDiff,
+			  TString::Format("outerDiff[%d][%d]/D",
+					  NUM_POL, NUM_SEAVEYS));
+
+  Int_t numPoints[NUM_POL][NUM_SEAVEYS];
   dataQualityTree->Branch("numPoints",
 			  numPoints,
 			  TString::Format("numPoints[%d][%d]/I",
-					  NUM_POL, NUM_SEAVEYS));  
+					  NUM_POL, NUM_SEAVEYS));
   
   
   Long64_t nEntries = headChain->GetEntries();
@@ -135,8 +147,9 @@ int main(int argc, char *argv[]){
     // {
       calEventChain->GetEntryWithIndex(header->eventNumber);
 
-      UsefulAnitaEvent* usefulEvent = new UsefulAnitaEvent(calEvent, WaveCalType::kAddPeds);
-      usefulEvent->setAlfaFilterFlag(false);
+      // UsefulAnitaEvent* usefulEvent = new UsefulAnitaEvent(calEvent, WaveCalType::kAddPeds);
+      UsefulAnitaEvent* usefulEvent = new UsefulAnitaEvent(calEvent);
+      // usefulEvent->setAlfaFilterFlag(false);
 
       eventNumber = header->eventNumber;
 
@@ -145,12 +158,17 @@ int main(int argc, char *argv[]){
 
 	  TGraph* gr = usefulEvent->getGraph(ant, (AnitaPol::AnitaPol_t) pol);
 
-	  maxAbsSecondDeriv[pol][ant] = -9999;
+	  maxAbsSecondDeriv[pol][ant] = -99999;
+	  maxVolts[pol][ant] = -99999;
 	  numPoints[pol][ant] = gr->GetN();
 
 	  for(int samp = 0; samp < numPoints[pol][ant]; samp++){
 
 	    Double_t V = gr->GetY()[samp];
+
+	    if(V > maxVolts[pol][ant]){
+	      maxVolts[pol][ant] = V;
+	    }
 
 	    if(samp < numPoints[pol][ant] - 2){
 	      Double_t V2 = gr->GetY()[samp+1];
@@ -158,9 +176,9 @@ int main(int argc, char *argv[]){
 	      double thisAbsSecondDeriv = TMath::Abs(2*V2 - V3 - V);
 	      if(thisAbsSecondDeriv > maxAbsSecondDeriv[pol][ant]){
 		maxAbsSecondDeriv[pol][ant] = thisAbsSecondDeriv;
+		outerDiff[pol][ant] = V3 - V;
 	      }
 	    }
-
 	  }
 
 	  delete gr;
@@ -171,7 +189,7 @@ int main(int argc, char *argv[]){
       dataQualityTree->Fill();
       delete usefulEvent;      
     }
-    p++;
+    p.inc(entry, maxEntry);
   }
 
   outFile->Write();

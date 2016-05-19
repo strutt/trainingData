@@ -1,9 +1,8 @@
-TGraph* getLimitGraph(TH2D* hMaxAbsSecondDeriv_0){
+TGraph* getLimitGraph(TH2D* hMaxAbsSecondDeriv_0, const double frac){
 
   const double deltaY = hMaxAbsSecondDeriv_0->GetYaxis()->GetBinLowEdge(2) - hMaxAbsSecondDeriv_0->GetYaxis()->GetBinLowEdge(1);
-
+  hMaxAbsSecondDeriv_0->GetYaxis()->SetTitle("abs(2V_{i} - V_{i-1} - V_{i+1}) (ADC counts)");
   const double integral = 3.52904e+06;
-  const double frac = 1 - 1e-4;
   std::cout << "the frac = " << frac << std::endl;
   TGraph* gr0 = new TGraph();
   for(int binx=1; binx<=hMaxAbsSecondDeriv_0->GetNbinsX(); binx++){
@@ -43,21 +42,32 @@ void plotDataQuality(){
   // TFile* f = TFile::Open("plotDataQualityPlots_130_434_2016-04-25_22-09-32.root");
   //  TFile* f = TFile::Open("plotDataQualityPlots_130_434_2016-04-26_18-16-09.root");
   TFile* f = TFile::Open("plotDataQualityPlots_130_434_2016-05-06_10-56-20.root");
-  
+
+  const double frac = 1 - 1e-4;
+  // const double frac = 1 - 1e-5;  
   TH2D* hMaxAbsSecondDeriv_0 = (TH2D*) f->Get("hMaxAbsSecondDeriv_0");
   TH2D* hMaxAbsSecondDeriv_1 = (TH2D*) f->Get("hMaxAbsSecondDeriv_1");
 
   auto c1 = new TCanvas();
   hMaxAbsSecondDeriv_0->Draw("colz");
+  hMaxAbsSecondDeriv_0->GetYaxis()->SetNoExponent(1);
   c1->SetLogz(1);
-  TGraph* gr0 = getLimitGraph(hMaxAbsSecondDeriv_0);
+  TGraph* gr0 = getLimitGraph(hMaxAbsSecondDeriv_0, frac);
   gr0->Draw("lsame");
-  
+  TLegend* l0 = new TLegend(0.68, 0.92, 0.98, 0.98);
+  l0->AddEntry(gr0, TString::Format("Boundary containing %5.3lf%% events", frac*100), "l");
+  l0->Draw();
   auto c2 = new TCanvas();
   hMaxAbsSecondDeriv_1->Draw("colz");  
   c2->SetLogz(1);
-  TGraph* gr1 = getLimitGraph(hMaxAbsSecondDeriv_1);
-  gr1->Draw("lsame");  
+  TGraph* gr1 = getLimitGraph(hMaxAbsSecondDeriv_1, frac);
+  hMaxAbsSecondDeriv_1->GetYaxis()->SetNoExponent(1);  
+  
+  gr1->Draw("lsame");
+  TLegend* l1 = new TLegend(0.68, 0.92, 0.98, 0.98);
+  l1->AddEntry(gr1, TString::Format("Boundary containing %5.3lf%% events", frac*100), "l");
+  l1->Draw();
+  
   // std::cout << "Double_t xMaxLimits[NUM_POL][NUM_SEAVEYS] = {";  
 }
 

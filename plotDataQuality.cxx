@@ -81,6 +81,11 @@ int main(int argc, char *argv[])
 
 
   TH2D* hMaxAbsSecondDeriv[NUM_POL];
+
+  TH1D* hNumAboveThresh = new TH1D("hNumAboveThresh",
+				   "Number of channels above threshold; Number of channels; Number of events",
+				   NUM_SEAVEYS*NUM_POL, 0, NUM_SEAVEYS*NUM_POL);
+  
   const char* polNames[NUM_POL] = {"HPol", "VPol"};
   for(int polInd=0; polInd < NUM_POL; polInd++){
     TString name = TString::Format("hMaxAbsSecondDeriv_%d", polInd);
@@ -89,18 +94,44 @@ int main(int argc, char *argv[])
 					  NUM_SEAVEYS, 0, NUM_SEAVEYS,
 					  4096, 0, 4096);
   }
+
+
+
+
+
+
+
+
+  // Double_t defaultThresholds[NUM_POL][NUM_SEAVEYS] = {
+  //   {109, 104, 139, 102, 173, 104, 116, 107, 85, 186, 224, 157, 245, 118, 137, 108,
+  //    95, 117, 108, 111, 109, 111, 103, 103, 97, 199, 208, 200, 184, 205, 175, 109,
+  //    106, 147, 117, 115, 117, 116, 114, 106, 95, 179, 208, 189, 184, 198, 110, 99},
+  //   {186, 205, 235, 269, 180, 239, 247, 175, 197, 310, 288, 327, 291, 270, 374, 232,
+  //    247, 257, 264, 249, 218, 283, 216, 250, 220, 360, 293, 347, 375, 423, 373, 247,
+  //    114, 177, 201, 266, 207, 239, 206, 184, 190, 327, 326, 271, 397, 415, 247, 255}};
+  Double_t defaultThresholds[NUM_POL][NUM_SEAVEYS] = {
+    {5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2,
+     5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2,
+     5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2},
+    {5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2,
+     5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2,
+     5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2}};
+  
   
   for(Long64_t entry = startEntry; entry < maxEntry; entry++){
     dataQualityChain->GetEntry(entry);
 
+    Int_t numAboveThresh = 0;
     for(int polInd=0; polInd < NUM_POL; polInd++){
       for(int ant=0; ant < NUM_SEAVEYS; ant++){
 
 	hMaxAbsSecondDeriv[polInd]->Fill(ant, maxAbsSecondDeriv[polInd][ant]);
-	
+	if(maxAbsSecondDeriv[polInd][ant] > defaultThresholds[polInd][ant]){
+	  numAboveThresh++;
+	}
       }
     }
-    
+    hNumAboveThresh->Fill(numAboveThresh);
     p++;
     
   }
