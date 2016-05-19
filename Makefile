@@ -69,7 +69,6 @@ endif
 
 OBJS = SunPos.o
 
-
 BINARIES = imagePeakHilbertPeak getWaisHeadings powerSpectra initialDistributions plotInitialDistributions testSunPos
 
 #Now the bits we're actually compiling
@@ -77,7 +76,7 @@ all: $(OBJS) $(BINARIES) commit
 
 .PHONY: commit clean
 
-$(BINARIES): %: %.$(SRCSUF) #$(ROOT_LIBRARY) 
+$(BINARIES): %: %.$(SRCSUF) $(OBJS)
 	@echo "<**Compiling**> "
 	@echo $<
 	-$(LD) $(CXXFLAGS) $(LDFLAGS) $(OBJS) $(LIBS) $< -o $@

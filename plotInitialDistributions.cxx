@@ -59,7 +59,8 @@ int main(int argc, char *argv[])
     headChain->Add(fileName);
     fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/gpsEvent%d.root", run, run);
     gpsChain->Add(fileName);
-    fileName = TString::Format("~/UCL/ANITA/anita3Analysis/decimatedDistributions/initialDistributions260MHzAnd370MHzFiltered/initialDistributionsPlots_%d_*.root", run);
+    // fileName = TString::Format("~/UCL/ANITA/anita3Analysis/decimatedDistributions/initialDistributions260MHzAnd370MHzFiltered/initialDistributionsPlots_%d_*.root", run);
+    fileName = TString::Format("~/UCL/ANITA/anita3Analysis/decimatedDistributions/initialDistributionPlots/initialDistributionsPlots_%d_*.root", run);    
     eventSummaryChain->Add(fileName);
   }
 
@@ -108,14 +109,18 @@ int main(int argc, char *argv[])
 
   const int numTrigTypes = 2; // rf=0 and min bias=1
   const int numSunDirs = 2; // away from the sun=0, towards the sun=1
-  const int numUpDownDirs = 2; // downwards=0 and upwards=1;
-  const int numNoiseStates= 2; // 0 is quiet, 1 is noisy
+  // const int numUpDownDirs = 2; // downwards=0 and upwards=1;
+  // const int numNoiseStates= 2; // 0 is quiet, 1 is noisy
   
-  TH2D* hPeakDirWrtNorth[NUM_POL][numTrigTypes][numSunDirs][numUpDownDirs][numNoiseStates];
-  TH2D* hPeakTheta[NUM_POL][numTrigTypes][numSunDirs][numUpDownDirs][numNoiseStates];
-  TH2D* hDeltaSolarPhiDeg[NUM_POL][numTrigTypes][numSunDirs][numUpDownDirs][numNoiseStates];
-  TH2D* hImagePeakHilbertPeak[NUM_POL][numTrigTypes][numSunDirs][numUpDownDirs][numNoiseStates];
-  TProfile2D* hpDeltaSolarPhiDeg[NUM_POL][numTrigTypes][numSunDirs][numUpDownDirs][numNoiseStates];
+  // TH2D* hPeakDirWrtNorth[NUM_POL][numTrigTypes][numSunDirs][numUpDownDirs][numNoiseStates];
+  // TH2D* hPeakTheta[NUM_POL][numTrigTypes][numSunDirs][numUpDownDirs][numNoiseStates];
+  // TH2D* hDeltaSolarPhiDeg[NUM_POL][numTrigTypes][numSunDirs][numUpDownDirs][numNoiseStates];
+  // TH2D* hImagePeakHilbertPeak[NUM_POL][numTrigTypes][numSunDirs][numUpDownDirs][numNoiseStates];
+  // TProfile2D* hpDeltaSolarPhiDeg[NUM_POL][numTrigTypes][numSunDirs][numUpDownDirs][numNoiseStates];
+
+  TH2D* hPeakDirWrtNorth[NUM_POL][numTrigTypes][numSunDirs];
+  TH2D* hPeakTheta[NUM_POL][numTrigTypes][numSunDirs];
+  TH2D* hImagePeakHilbertPeak[NUM_POL][numTrigTypes][numSunDirs];
   
   const int numBinsPhi = 420;
   const int numBinsTheta = numBinsPhi/2;  
@@ -125,130 +130,118 @@ int main(int argc, char *argv[])
   const double maxTheta = 90;
   const double minTheta = -90;
 
-  const double deltaSolarPhiDegCut = 20; // degrees
+  // const double deltaSolarPhiDegCut = 20; // degrees
+  const double deltaSolarPhiDegCut = 10; // degrees  
 
   const Int_t numImagePeakBins = 1024;
   const Int_t numHilbertPeakBins = 1024;
   const Double_t maxHilbertPeak = 1000;
 
-  const UInt_t timeCut1Low  = 1419000000;
-  const UInt_t timeCut1High = 1419620000;
-  const UInt_t timeCut2Low  = 1419800000;
-  const UInt_t timeCut2High = 1420300000;
   
   for(int pol=0; pol<NUM_POL; pol++){
     for(int trig=0; trig < numTrigTypes; trig++){
       for(int sun=0; sun < numSunDirs; sun++){
-	for(int upDir=0; upDir < numUpDownDirs; upDir++){
-	  for(int noisy=0; noisy < numNoiseStates; noisy++){
 
-	    TString name = "hPeakDirWrtNorth_";
-	    name += trig == 0 ? "" : "minBias_";
-	    name += sun == 0 ? "awayFromSun_" : "towardsSun_";
-	    name += upDir == 0 ? "down_" : "up_";
-	    name += noisy == 0 ? "quiet_" : "noisy_";
-	    name += pol == AnitaPol::kHorizontal ? "HPol" : "VPol";
-	    	
-	    TString title = upDir == 0 ? "Downwards pointing " : "Upwards pointing ";
-	    title += trig == 0 ? "RF triggered" : "min bias";
-	    title += " peak direction w.r.t North vs. realTime ";
-	    title += pol == AnitaPol::kHorizontal ? "HPol" : "VPol";
-	    title += "; realTime; peak direction wrt. north (Degrees)";
+	TString name = "hPeakDirWrtNorth_";
+	name += trig == 0 ? "" : "minBias_";
+	name += sun == 0 ? "awayFromSun_" : "towardsSun_";
+	name += pol == AnitaPol::kHorizontal ? "HPol" : "VPol";
 
-	    hPeakDirWrtNorth[pol][trig][sun][upDir][noisy] = new TH2D(name, title,
-								      numTimeBins,
-								      firstRealTime, lastRealTime+1,
-								      numBinsPhi,
-								      minDirWrtNorth, maxDirWrtNorth);
+	TString title = trig == 0 ? "RF triggered" : "Min bias";
+	title += " peak direction w.r.t North vs. realTime ";
+	title += pol == AnitaPol::kHorizontal ? "HPol" : "VPol";
+	title += "; realTime; peak direction wrt. north (Degrees)";
 
+	hPeakDirWrtNorth[pol][trig][sun] = new TH2D(name, title,
+						    numTimeBins,
+						    firstRealTime, lastRealTime+1,
+						    numBinsPhi,
+						    minDirWrtNorth, maxDirWrtNorth);
 
+	name = "hPeakTheta_";
+	name += trig == 0 ? "" : "minBias_";
+	name += sun == 0 ? "awayFromSun_" : "towardsSun_";
+	name += pol == AnitaPol::kHorizontal ? "HPol" : "VPol";
 
-	    name = "hPeakTheta_";
-	    name += trig == 0 ? "" : "minBias_";
-	    name += sun == 0 ? "awayFromSun_" : "towardsSun_";
-	    name += upDir == 0 ? "down_" : "up_";
-	    name += noisy == 0 ? "quiet_" : "noisy_";
-	    name += pol == AnitaPol::kHorizontal ? "HPol" : "VPol";
-
-
-	    title = upDir == 0 ? "Downwards pointing " : "Upwards pointing ";	  	
-	    title += trig == 0 ? "RF triggered" : "min bias";
-	    title += " Peak direction #theta vs. realTime ";
-	    title += pol == AnitaPol::kHorizontal ? "HPol" : "VPol";
-	    title += "; realTime; #theta (Degrees)";
+	title = trig == 0 ? "RF triggered" : "Min bias";
+	title += " Peak direction #theta vs. realTime ";
+	title += pol == AnitaPol::kHorizontal ? "HPol" : "VPol";
+	title += "; realTime; #theta (Degrees)";
 	
-	    hPeakTheta[pol][trig][sun][upDir][noisy] = new TH2D(name, title,
-								numTimeBins, firstRealTime, lastRealTime+1,
-								numBinsTheta, minTheta, maxTheta);
+	hPeakTheta[pol][trig][sun] = new TH2D(name, title,
+					      numTimeBins, firstRealTime, lastRealTime+1,
+					      numBinsTheta, minTheta, maxTheta);
 
-	    name = "hDeltaSolarPhiDeg_";
-	    name += trig == 0 ? "" : "minBias_";
-	    name += sun == 0 ? "awayFromSun_" : "towardsSun_";
-	    name += upDir == 0 ? "down_" : "up_";
-	    name += noisy == 0 ? "quiet_" : "noisy_";
-	    name += pol == AnitaPol::kHorizontal ? "HPol" : "VPol";
+	name = "hImagePeakHilbertPeak_";
+	name += trig == 0 ? "" : "minBias_";
+	name += sun == 0 ? "awayFromSun_" : "towardsSun_";
+	name += pol == AnitaPol::kHorizontal ? "HPol" : "VPol";
 
-	    title = upDir == 0 ? "Downwards pointing " : "Upwards pointing ";
-	    title += trig == 0 ? "RF triggered" : "min bias";
-	    title += " solar #phi -  Reco #phi (Degrees) ";
-	    title += pol == AnitaPol::kHorizontal ? "HPol" : "VPol";
-	    title += "; #delta#phi (Degrees); Number of events";
+	title = trig == 0 ? " RF triggered" : " Min bias";
+	title += " image peak vs. Hilbert Peak ";
+	title += pol == AnitaPol::kHorizontal ? "HPol" : "VPol";
+	title += "; Image peak (no units); Hilbert peak (mV); Number of events";
 
-	    hDeltaSolarPhiDeg[pol][trig][sun][upDir][noisy] = new TH2D(name, title,
-								       numBinsPhi,
-								       minDirWrtNorth, maxDirWrtNorth,
-								       numBinsTheta,
-								       minTheta, maxTheta);
-								       
-
-	    name = "hpDeltaSolarPhiDeg_";
-	    name += trig == 0 ? "" : "minBias_";
-	    name += sun == 0 ? "awayFromSun_" : "towardsSun_";
-	    name += upDir == 0 ? "down_" : "up_";
-	    name += noisy == 0 ? "quiet_" : "noisy_";
-	    name += pol == AnitaPol::kHorizontal ? "HPol" : "VPol";
-
-	    title = upDir == 0 ? "Downwards pointing " : "Upwards pointing ";
-	    title += trig == 0 ? "RF triggered" : "min bias";
-	    title += " solar #phi -  Reco #phi (Degrees) ";
-	    title += pol == AnitaPol::kHorizontal ? "HPol" : "VPol";
-	    title += "; #delta#phi (Degrees); Mean correlation coefficient (no units)";
-
-	    hpDeltaSolarPhiDeg[pol][trig][sun][upDir][noisy] = new TProfile2D(name, title,
-									      numBinsPhi,
-									      minDirWrtNorth,
-									      maxDirWrtNorth,
-									      numBinsTheta,
-									      minTheta, maxTheta);
-
-	    name = "hImagePeakHilbertPeak_";
-	    name += trig == 0 ? "" : "minBias_";
-	    name += sun == 0 ? "awayFromSun_" : "towardsSun_";
-	    name += upDir == 0 ? "down_" : "up_";
-	    name += noisy == 0 ? "quiet_" : "noisy_";
-	    name += pol == AnitaPol::kHorizontal ? "HPol" : "VPol";
-
-	    title = upDir == 0 ? "Downwards pointing " : "Upwards pointing ";
-	    title += trig == 0 ? " RF triggered" : " min bias";
-	    title += " image peak vs. Hilbert Peak ";
-	    title += pol == AnitaPol::kHorizontal ? "HPol" : "VPol";
-	    title += "; Image peak (no units); Hilbert peak (mV); Number of events";
-
-	    hImagePeakHilbertPeak[pol][trig][sun][upDir][noisy] = new TH2D(name, title,
-									   numImagePeakBins,
-									   0, 1,
-									   numHilbertPeakBins,
-									   0, maxHilbertPeak);
-	  }
-	}	
+	hImagePeakHilbertPeak[pol][trig][sun] = new TH2D(name, title,
+							 numImagePeakBins,
+							 0, 1,
+							 numHilbertPeakBins,
+							 0, maxHilbertPeak);
       }
     }
   }
-
+  
   TH2D* hHeading = new TH2D("hHeading", "ANITA heading vs. realTime; realTime; heading (Degrees)",
 			    1024, firstRealTime, lastRealTime+1,
 			    numBinsPhi, 0, 360);
 
+  TH1D* hDeltaSolarPhiDeg[NUM_POL];
+  TH1D* hDeltaSolarThetaDeg[NUM_POL];
+  TH1D* hDeltaSolarPhiDegZoom[NUM_POL];
+  TH1D* hDeltaSolarThetaDegZoom[NUM_POL];
+
+  for(int pol=0; pol<NUM_POL; pol++){
+    TString name = pol==AnitaPol::kHorizontal ? "hDeltaSolarPhiDegHPol" : "hDeltaSolarPhiDegVPol";
+    TString title = "#delta#phi_{sun} ";
+    title += pol==AnitaPol::kHorizontal ? "HPol" : "VPol";
+    title += "; #delta#phi_{sun} (Degrees); Number of events / bin";
+
+    hDeltaSolarPhiDeg[pol] = new TH1D(name, title,
+				      numBinsPhi, -180, 180);
+
+
+    name = pol==AnitaPol::kHorizontal ? "hDeltaSolarThetaDegHPol" : "hDeltaSolarThetaDegVPol";
+    title = "#delta#theta_{sun} ";
+    title += pol==AnitaPol::kHorizontal ? "HPol" : "VPol";
+    title += "; #delta#theta_{sun} (Degrees); Number of events / bin";
+
+    hDeltaSolarThetaDeg[pol] = new TH1D(name, title,
+					numBinsPhi, -180, 180);
+
+    name = pol==AnitaPol::kHorizontal ? "hDeltaSolarPhiDegZoomHPol" : "hDeltaSolarPhiDegZoomVPol";
+    title = "#delta#phi_{sun} ";
+    title += pol==AnitaPol::kHorizontal ? "HPol" : "VPol";
+    title += "; #delta#phi_{sun} (Degrees); Number of events / bin";
+
+    hDeltaSolarPhiDegZoom[pol] = new TH1D(name, title,
+				      numBinsPhi, -20, 20);
+
+
+    name = pol==AnitaPol::kHorizontal ? "hDeltaSolarThetaDegZoomHPol" : "hDeltaSolarThetaDegZoomVPol";
+    title = "#delta#theta_{sun} ";
+    title += pol==AnitaPol::kHorizontal ? "HPol" : "VPol";
+    title += "; #delta#theta_{sun} (Degrees); Number of events / bin";
+
+    hDeltaSolarThetaDegZoom[pol] = new TH1D(name, title,
+					numBinsPhi, -20, 20);
+
+  }
+
+
+
+  TGraph* grSunPhiDeg = new TGraph();
+  TGraph* grSunThetaDeg = new TGraph();
+  
   for(Long64_t entry = startEntry; entry < maxEntry; entry++){
     eventSummaryChain->GetEntry(entry);
     headChain->GetEntryWithIndex(eventSummary->eventNumber);
@@ -260,6 +253,12 @@ int main(int argc, char *argv[])
     Double_t solarPhiDeg, solarThetaDeg;
     usefulPat.getSunPosition(solarPhiDeg, solarThetaDeg);
 
+    // std::cerr << pat->heading - solarPhiDeg << "\t" << usefulPat.getAzimuthOfSunRelativeToNorth() << std::endl;
+    if((entry % 16)==0){
+      grSunPhiDeg->SetPoint(grSunPhiDeg->GetN(), header->realTime, pat->heading - solarPhiDeg);
+      grSunThetaDeg->SetPoint(grSunThetaDeg->GetN(), header->realTime, solarThetaDeg);    
+    }
+    
     for(Int_t polInd=0; polInd < NUM_POL; polInd++){
 
       Double_t recoPhiDeg = eventSummary->peak[polInd][1].phi;
@@ -272,36 +271,74 @@ int main(int argc, char *argv[])
       Double_t deltaSolarPhiDeg = RootTools::getDeltaAngleDeg(solarPhiDeg, recoPhiDeg);
       Double_t deltaSolarThetaDeg = solarThetaDeg - recoThetaDeg;
 
+      Double_t deltaSolarAngleDeg = TMath::Sqrt(deltaSolarThetaDeg*deltaSolarThetaDeg + deltaSolarPhiDeg*deltaSolarPhiDeg);
+      
       if(TMath::Abs(directionWrtNorth) > maxDirWrtNorth){
 	std::cerr << recoPhiDeg << "\t" << pat->heading << std::endl;
       }
 
       Int_t trig = eventSummary->flags.isMinBiasTrigger > 0 ? 1 : 0;
-      Int_t sun = TMath::Abs(deltaSolarPhiDeg) > deltaSolarPhiDegCut ? 0 : 1;
-      Int_t upDir = recoThetaDeg > 0 ? 0 : 1;
+      // Int_t sun = TMath::Abs(deltaSolarPhiDeg) > deltaSolarPhiDegCut ? 0 : 1;
+      // Int_t sun = TMath::Abs(deltaSolarPhiDeg) > deltaSolarPhiDegCut ? 0 : 1;
+      Int_t sun = TMath::Abs(deltaSolarAngleDeg) > deltaSolarPhiDegCut ? 0 : 1;
+      // Int_t upDir = recoThetaDeg > 0 ? 0 : 1
 
-      UInt_t realTime = header->realTime;
-      Int_t noisy = 1;
+      // UInt_t realTime = header->realTime;
+      // Int_t noisy = 1;
 
-      if((realTime >= timeCut1Low && realTime < timeCut1High) || (realTime >= timeCut2Low && realTime < timeCut2High)){
-	noisy = 0;
-      }
+      // if((realTime >= timeCut1Low && realTime < timeCut1High) || (realTime >= timeCut2Low && realTime < timeCut2High)){
+      // 	noisy = 0;
+      // }
       
-      hPeakDirWrtNorth[polInd][trig][sun][upDir][noisy]->Fill(header->realTime,
-							      directionWrtNorth);
-      hPeakTheta[polInd][trig][sun][upDir][noisy]->Fill(header->realTime,
-							recoThetaDeg);
-      hDeltaSolarPhiDeg[polInd][trig][sun][upDir][noisy]->Fill(deltaSolarPhiDeg, deltaSolarThetaDeg);
-      hpDeltaSolarPhiDeg[polInd][trig][sun][upDir][noisy]->Fill(deltaSolarPhiDeg,
-								deltaSolarThetaDeg,
-								eventSummary->peak[polInd][1].value);
-      hImagePeakHilbertPeak[polInd][trig][sun][upDir][noisy]->Fill(eventSummary->peak[polInd][1].value,
-								   eventSummary->coherent[polInd][1].peakHilbert);
+      // hPeakDirWrtNorth[polInd][trig][sun][upDir][noisy]->Fill(header->realTime,
+      // 							      directionWrtNorth);
+      // hPeakTheta[polInd][trig][sun][upDir][noisy]->Fill(header->realTime,
+      // 							recoThetaDeg);
+      // hDeltaSolarPhiDeg[polInd][trig][sun][upDir][noisy]->Fill(deltaSolarPhiDeg, deltaSolarThetaDeg);
+      // hpDeltaSolarPhiDeg[polInd][trig][sun][upDir][noisy]->Fill(deltaSolarPhiDeg,
+      // 								deltaSolarThetaDeg,
+      // 								eventSummary->peak[polInd][1].value);
+      // hImagePeakHilbertPeak[polInd][trig][sun][upDir][noisy]->Fill(eventSummary->peak[polInd][1].value,
+      // 								   eventSummary->coherent[polInd][1].peakHilbert);
+
+      hPeakDirWrtNorth[polInd][trig][sun]->Fill(header->realTime,
+						directionWrtNorth);
+      hPeakTheta[polInd][trig][sun]->Fill(header->realTime,
+					  recoThetaDeg);
+
+      // const UInt_t timeCut1Low  = 1419000000;
+      // const UInt_t timeCut1High = 1419600000;
+      // const UInt_t timeCut2Low  = 1419800000;
+      // const UInt_t timeCut2High = 1420280000;      
+      // UInt_t realTime = header->realTime;
+      // if((realTime >= timeCut1Low && realTime < timeCut1High) ||
+      // 	 (realTime >= timeCut2Low && realTime < timeCut2High)){
+      {
+	hImagePeakHilbertPeak[polInd][trig][sun]->Fill(eventSummary->peak[polInd][1].value,
+						       eventSummary->coherent[polInd][1].peakHilbert);
+      }
+
+      if(eventSummary->flags.isMinBiasTrigger > 0){
+	// std::cerr << deltaSolarPhiDeg << "\t" << deltaSolarThetaDeg << std::endl;
+	hDeltaSolarPhiDeg[polInd]->Fill(deltaSolarPhiDeg);
+	hDeltaSolarThetaDeg[polInd]->Fill(deltaSolarThetaDeg);
+
+	hDeltaSolarPhiDegZoom[polInd]->Fill(deltaSolarPhiDeg);
+	hDeltaSolarThetaDegZoom[polInd]->Fill(deltaSolarThetaDeg);	
+      }
     }
     hHeading->Fill(header->realTime, pat->heading);
     
     p++;
   }
+
+
+  grSunPhiDeg->SetName("grSunPhiDeg");
+  grSunPhiDeg->SetTitle("Predicted sun #phi (Degrees)");
+  grSunThetaDeg->SetName("grSunThetaDeg");
+  grSunThetaDeg->SetTitle("Predicted sun #theta (Degrees)");
+  grSunPhiDeg->Write();
+  grSunThetaDeg->Write();
   
   outFile->Write();
   outFile->Close();

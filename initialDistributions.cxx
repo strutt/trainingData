@@ -116,14 +116,6 @@ int main(int argc, char *argv[])
   for(Long64_t entry = startEntry; entry < maxEntry; entry++){
 
     headChain->GetEntry(entry);
-
-    // if(header->eventNumber != 60832108){
-    //   p++;
-    //   continue;
-    // }
-
-    // gpsChain->GetEntry(entry);
-    // calEventChain->GetEntry(entry);
     gpsChain->GetEntryWithIndex(header->eventNumber);
     calEventChain->GetEntryWithIndex(header->eventNumber);
 
@@ -198,12 +190,12 @@ int main(int argc, char *argv[])
     
     eventSummary->flags.isGood = 1;
     
-    eventSummary->flags.isPayloadBlast = 0; //!< To be determined
+    eventSummary->flags.isPayloadBlast = 0; //!< To be determined.
     eventSummary->flags.nadirFlag = 0; //!< Not sure I will use this.
     eventSummary->flags.strongCWFlag = 0; //!< Not sure I will use this.
     eventSummary->flags.isVarner = 0; //!< Not sure I will use this.
     eventSummary->flags.isVarner2 = 0; //!< Not sure I will use this.
-    eventSummary->flags.pulser = AnitaEventSummary::EventFlags::NONE; //!< Not yet
+    eventSummary->flags.pulser = AnitaEventSummary::EventFlags::NONE; //!< Not yet.
 
     delete usefulEvent;
 
