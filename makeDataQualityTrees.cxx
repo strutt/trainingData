@@ -117,7 +117,7 @@ int main(int argc, char *argv[]){
 			  TString::Format("maxAbsSecondDeriv[%d][%d]/D",
 					  NUM_POL, NUM_SEAVEYS));
 
-  Double_t outerDiff[NUM_POL][NUM_SEAVEYS];  
+  Double_t outerDiff[NUM_POL][NUM_SEAVEYS];
   dataQualityTree->Branch("outerDiff",
 			  outerDiff,
 			  TString::Format("outerDiff[%d][%d]/D",
@@ -129,7 +129,6 @@ int main(int argc, char *argv[]){
 			  TString::Format("numPoints[%d][%d]/I",
 					  NUM_POL, NUM_SEAVEYS));
   
-  
   Long64_t nEntries = headChain->GetEntries();
   Long64_t maxEntry = 0; //2500;
   Long64_t startEntry = 0;
@@ -137,17 +136,16 @@ int main(int argc, char *argv[]){
   std::cout << "Processing " << maxEntry << " of " << nEntries << " entries." << std::endl;
   ProgressBar p(maxEntry-startEntry);
 
-
   for(Long64_t entry = startEntry; entry < maxEntry; entry++){
 
     headChain->GetEntry(entry);
 
-    Int_t isMinBias = header->getTriggerBitADU5() || header->getTriggerBitG12() || header->getTriggerBitSoftExt();
+    Int_t isMinBias = RootTools::isMinBiasSampleEvent(header);
+    
     if(isMinBias > 0){
     // {
       calEventChain->GetEntryWithIndex(header->eventNumber);
 
-      // UsefulAnitaEvent* usefulEvent = new UsefulAnitaEvent(calEvent, WaveCalType::kAddPeds);
       UsefulAnitaEvent* usefulEvent = new UsefulAnitaEvent(calEvent);
       // usefulEvent->setAlfaFilterFlag(false);
 

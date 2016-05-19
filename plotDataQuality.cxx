@@ -53,6 +53,7 @@ int main(int argc, char *argv[])
     }
 
     TString fileName = TString::Format("dataQualityTrees/makeDataQualityTreesPlots_%d_*", run);
+    // TString fileName = TString::Format("makeDataQualityTreesPlots_%d_*", run);    
     dataQualityChain->Add(fileName);
   }
 
@@ -63,6 +64,8 @@ int main(int argc, char *argv[])
 
   Double_t maxAbsSecondDeriv[NUM_POL][NUM_SEAVEYS];
   dataQualityChain->SetBranchAddress("maxAbsSecondDeriv", &maxAbsSecondDeriv[0][0]);
+  Double_t maxVolts[NUM_POL][NUM_SEAVEYS];
+  dataQualityChain->SetBranchAddress("maxVolts", &maxVolts[0][0]);
 
   OutputConvention oc(argc, argv);
   TString outFileName = oc.getOutputFileName();
@@ -79,12 +82,10 @@ int main(int argc, char *argv[])
   std::cout << "Processing " << maxEntry << " of " << nEntries << " entries." << std::endl;
   ProgressBar p(maxEntry-startEntry);
 
-
+  const double maxVoltsThresh = 400;
   TH2D* hMaxAbsSecondDeriv[NUM_POL];
-
-  TH1D* hNumAboveThresh = new TH1D("hNumAboveThresh",
-				   "Number of channels above threshold; Number of channels; Number of events",
-				   NUM_SEAVEYS*NUM_POL, 0, NUM_SEAVEYS*NUM_POL);
+  TH2D* hMaxVolts[NUM_POL];
+  TH1D* hNumChannelsAboveMaxVolts[NUM_POL];
   
   const char* polNames[NUM_POL] = {"HPol", "VPol"};
   for(int polInd=0; polInd < NUM_POL; polInd++){
@@ -93,50 +94,37 @@ int main(int argc, char *argv[])
     hMaxAbsSecondDeriv[polInd] = new TH2D(name, title,
 					  NUM_SEAVEYS, 0, NUM_SEAVEYS,
 					  4096, 0, 4096);
+
+    name = TString::Format("hMaxVolts_%d", polInd);
+    title = TString::Format("Maximum volts %s channels; Antenna Index; Volts (mV); Events per bin", polNames[polInd]);
+    hMaxVolts[polInd] = new TH2D(name, title,
+				 NUM_SEAVEYS, 0, NUM_SEAVEYS,
+				 4096, 0, 4096);
+    
+    name = TString::Format("hNumChannelsAboveMaxVolts_%d", polInd);
+    title = TString::Format("Number of %s channels where maximum volts > above %4.0lf volts; Number of channels; Number of events", polNames[polInd], maxVoltsThresh);
+    hNumChannelsAboveMaxVolts[polInd] = new TH1D(name, title,
+						 NUM_SEAVEYS+1, 0, NUM_SEAVEYS+1);
   }
 
-
-
-
-
-
-
-
-  // Double_t defaultThresholds[NUM_POL][NUM_SEAVEYS] = {
-  //   {109, 104, 139, 102, 173, 104, 116, 107, 85, 186, 224, 157, 245, 118, 137, 108,
-  //    95, 117, 108, 111, 109, 111, 103, 103, 97, 199, 208, 200, 184, 205, 175, 109,
-  //    106, 147, 117, 115, 117, 116, 114, 106, 95, 179, 208, 189, 184, 198, 110, 99},
-  //   {186, 205, 235, 269, 180, 239, 247, 175, 197, 310, 288, 327, 291, 270, 374, 232,
-  //    247, 257, 264, 249, 218, 283, 216, 250, 220, 360, 293, 347, 375, 423, 373, 247,
-  //    114, 177, 201, 266, 207, 239, 206, 184, 190, 327, 326, 271, 397, 415, 247, 255}};
-  Double_t defaultThresholds[NUM_POL][NUM_SEAVEYS] = {
-    {5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2,
-     5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2,
-     5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2},
-    {5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2,
-     5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2,
-     5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2, 5e2}};
-  
-  
   for(Long64_t entry = startEntry; entry < maxEntry; entry++){
     dataQualityChain->GetEntry(entry);
 
-    Int_t numAboveThresh = 0;
     for(int polInd=0; polInd < NUM_POL; polInd++){
+      Int_t numAboveVoltsThresh = 0;
       for(int ant=0; ant < NUM_SEAVEYS; ant++){
 
-	hMaxAbsSecondDeriv[polInd]->Fill(ant, maxAbsSecondDeriv[polInd][ant]);
-	if(maxAbsSecondDeriv[polInd][ant] > defaultThresholds[polInd][ant]){
-	  numAboveThresh++;
+	hMaxVolts[polInd]->Fill(ant, maxVolts[polInd][ant]);
+	if(maxVolts[polInd][ant] > maxVoltsThresh){
+	  numAboveVoltsThresh++;
 	}
       }
+      hNumChannelsAboveMaxVolts[polInd]->Fill(numAboveVoltsThresh);
     }
-    hNumAboveThresh->Fill(numAboveThresh);
     p++;
-    
   }
   outFile->Write();
-  outFile->Close();  
+  outFile->Close();
 
   return 0;
 }

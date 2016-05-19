@@ -121,7 +121,8 @@ int main(int argc, char *argv[])
     //   continue;
     // }
 
-    Int_t isMinBias = header->getTriggerBitADU5() || header->getTriggerBitG12() || header->getTriggerBitSoftExt();
+    Int_t isMinBias = RootTools::isMinBiasSampleEvent(header);
+    
     if(isMinBias > 0){
     // {
       // Int_t rf = header->getTriggerBitRF();
