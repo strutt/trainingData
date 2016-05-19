@@ -4,7 +4,7 @@
  Email: b.strutt.12@ucl.ac.uk
 
  Description:
-             Program to reconstruct HPol pulses from Wais Divide.
+             Reconstruct decimated data set.
 ********************************************************************************************************* */
 
 #include "TFile.h"
@@ -45,22 +45,37 @@ int main(int argc, char *argv[])
   const Int_t lastRun = firstRun; //argc==3 ? atoi(argv[2]) : firstRun;
 
   CrossCorrelator* cc = new CrossCorrelator();
-  
+
+
   TChain* headChain = new TChain("headTree");
   TChain* gpsChain = new TChain("adu5PatTree");
   TChain* calEventChain = new TChain("eventTree");
   
   for(Int_t run=firstRun; run<=lastRun; run++){
-    TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/headFile%d.root", run, run);
-    // TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/decimatedHeadFile%d.root", run, run);    
+    // TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/headFile%d.root", run, run);
+    TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/decimatedHeadFile%d.root", run, run);
     headChain->Add(fileName);
     fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/gpsEvent%d.root", run, run);
     gpsChain->Add(fileName);
     fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/calEventFile%d.root", run, run);
     calEventChain->Add(fileName);
   }
+
+  if(headChain->GetEntries()==0){
+    std::cerr << "Unable to find header files!" << std::endl;
+    return 1;
+  }
+  if(gpsChain->GetEntries()==0){
+    std::cerr << "Unable to find gps files!" << std::endl;
+    return 1;
+  }
+  if(calEventChain->GetEntries()==0){
+    std::cerr << "Unable to find calEvent files!" << std::endl;
+    return 1;
+  }
+  
   calEventChain->BuildIndex("eventNumber");
-  gpsChain->BuildIndex("eventNumber");  
+  gpsChain->BuildIndex("eventNumber");
 
   RawAnitaHeader* header = NULL;
   headChain->SetBranchAddress("header", &header);
@@ -77,12 +92,22 @@ int main(int argc, char *argv[])
     return 1;
   }
 
+
+  cc->kDoSimpleSatelliteFiltering = 1;
+  if(cc->kDoSimpleSatelliteFiltering > 0){
+    TNamed* comments = new TNamed("comments", "Applied simple, static notch at 260#pm26 MHz and 370#pm20");
+    comments->Write();
+    delete comments;
+  }
+    
+
   TTree* eventSummaryTree = new TTree("eventSummaryTree", "eventSummaryTree");
-  AnitaEventSummary* eventSummary;
+  // AnitaEventSummary* eventSummary = new AnitaEventSummary();
+  AnitaEventSummary* eventSummary = NULL; //new AnitaEventSummary();
   eventSummaryTree->Branch("eventSummary", &eventSummary);
   
   Long64_t nEntries = headChain->GetEntries();
-  Long64_t maxEntry = 0; //100;
+  Long64_t maxEntry = 0; //2500;
   Long64_t startEntry = 0;
   if(maxEntry<=0 || maxEntry > nEntries) maxEntry = nEntries;
   std::cout << "Processing " << maxEntry << " of " << nEntries << " entries." << std::endl;
@@ -92,11 +117,11 @@ int main(int argc, char *argv[])
 
     headChain->GetEntry(entry);
 
-    if(header->eventNumber != 60832108){
-      p++;
-      continue;
-    }
-				       
+    // if(header->eventNumber != 60832108){
+    //   p++;
+    //   continue;
+    // }
+
     // gpsChain->GetEntry(entry);
     // calEventChain->GetEntry(entry);
     gpsChain->GetEntryWithIndex(header->eventNumber);
@@ -104,108 +129,82 @@ int main(int argc, char *argv[])
 
     UsefulAnitaEvent* usefulEvent = new UsefulAnitaEvent(calEvent);
     UsefulAdu5Pat usefulPat(pat);
-    cc->correlateEvent(usefulEvent);
+    // cc->correlateEvent(usefulEvent);
 
-    // cc->reconstructEvent(usefulEvent, header);
+    const Int_t myNumPeaks = 2;    
+    cc->reconstructEvent(usefulEvent, myNumPeaks, myNumPeaks);
     
-    eventSummary = new AnitaEventSummary(header, pat);
-    // // eventSummary = new AnitaEventSummary(); //header, pat);
-    // eventSummary->eventNumber = header->eventNumber;
+    eventSummary = new AnitaEventSummary(header);
 
-    // Recontruction...
     for(Int_t polInd=0; polInd < AnitaPol::kNotAPol; polInd++){
-      Int_t hypInd = 0;      
-      AnitaPol::AnitaPol_t pol = (AnitaPol::AnitaPol_t) polInd;      
-      const Int_t coherentDeltaPhi = 2;
-      Double_t minY = 0;
+      AnitaPol::AnitaPol_t pol = (AnitaPol::AnitaPol_t) polInd;
 
-      // cc->getPeakInfoTriggered(pol,
-      // 			       eventSummary->peak[pol][hypInd].value,
-      // 			       eventSummary->peak[pol][hypInd].phi,
-      // 			       eventSummary->peak[pol][hypInd].theta);
-      TH2D* hTriggeredImage = cc->makeTriggeredImage(pol,
-						     eventSummary->peak[pol][hypInd].value,
-						     eventSummary->peak[pol][hypInd].phi,
-						     eventSummary->peak[pol][hypInd].theta,
-						     header->getL3TrigPattern(pol));
-			     
-      hTriggeredImage->Write();
-			       
-      
-      usefulPat.getSourceLonAndLatAtAlt(eventSummary->peak[pol][hypInd].phi*TMath::DegToRad(),
-					eventSummary->peak[pol][hypInd].theta*TMath::DegToRad(),
-					eventSummary->peak[pol][hypInd].longitude,
-					eventSummary->peak[pol][hypInd].latitude,
-					eventSummary->peak[pol][hypInd].altitude);
+      Int_t pointInd=0;
+      for(Int_t peakInd=0; peakInd < myNumPeaks; peakInd++){
+	
+	Double_t minY = 0;
 
-      TGraph* grTriggered = cc->makeCoherentlySummedWaveform(pol,
-							     eventSummary->peak[pol][hypInd].phi,
-							     eventSummary->peak[pol][hypInd].theta,
+	cc->getCoarsePeakInfo(pol, peakInd,
+			      eventSummary->peak[pol][pointInd].value,
+			      eventSummary->peak[pol][pointInd].phi,
+			      eventSummary->peak[pol][pointInd].theta);
+
+	const Int_t coherentDeltaPhi = 2;
+	TGraph* grGlobal0 = cc->makeCoherentlySummedWaveform(pol,
+							     eventSummary->peak[pol][pointInd].phi,
+							     eventSummary->peak[pol][pointInd].theta,
 							     coherentDeltaPhi,
-							     eventSummary->peak[pol][hypInd].snr);
+							     eventSummary->peak[pol][pointInd].snr);
 
-      grTriggered->Write();
+	TGraph* grGlobal0Hilbert = FFTtools::getHilbertEnvelope(grGlobal0);
       
-      TGraph* grTriggeredHilbert = FFTtools::getHilbertEnvelope(grTriggered);
-
+	RootTools::getMaxMin(grGlobal0Hilbert, eventSummary->coherent[pol][peakInd].peakHilbert, minY);
       
-      RootTools::getMaxMin(grTriggeredHilbert, eventSummary->coherent[pol][hypInd].peakHilbert, minY);
+	delete grGlobal0;
+	delete grGlobal0Hilbert;
 
-      delete hTriggeredImage;      
-      delete grTriggered;
-      delete grTriggeredHilbert;
+	pointInd++;
 
-      hypInd++;
 
-      // cc->getPeakInfoZoom(pol,
-      // 			  eventSummary->peak[pol][hypInd].value,
-      // 			  eventSummary->peak[pol][hypInd].phi,
-      // 			  eventSummary->peak[pol][hypInd].theta);
-      TH2D* hZoomedImage = cc->makeZoomedImage(pol,
-					       eventSummary->peak[pol][hypInd].value,
-					       eventSummary->peak[pol][hypInd].phi,
-					       eventSummary->peak[pol][hypInd].theta,
-					       eventSummary->peak[pol][hypInd-1].phi,
-					       eventSummary->peak[pol][hypInd-1].theta);	
 
-      hZoomedImage->Write();
+
+	
+	cc->getFinePeakInfo(pol, peakInd, 
+			    eventSummary->peak[pol][pointInd].value,
+			    eventSummary->peak[pol][pointInd].phi,
+			    eventSummary->peak[pol][pointInd].theta);
       
-      usefulPat.getSourceLonAndLatAtAlt(eventSummary->peak[pol][hypInd].phi*TMath::DegToRad(),
-					eventSummary->peak[pol][hypInd].theta*TMath::DegToRad(),
-					eventSummary->peak[pol][hypInd].longitude,
-					eventSummary->peak[pol][hypInd].latitude,
-					eventSummary->peak[pol][hypInd].altitude);
-      
-      TGraph* grZoomed = cc->makeUpsampledCoherentlySummedWaveform(pol,
-								   eventSummary->peak[pol][hypInd].phi,
-								   eventSummary->peak[pol][hypInd].theta,
-								   coherentDeltaPhi,
-								   eventSummary->peak[pol][hypInd].snr);
+	TGraph* grZ0 = cc->makeUpsampledCoherentlySummedWaveform(pol,
+								 eventSummary->peak[pol][pointInd].phi,
+								 eventSummary->peak[pol][pointInd].theta,
+								 coherentDeltaPhi,
+								 eventSummary->peak[pol][pointInd].snr);
 
-      TGraph* grZoomedHilbert = FFTtools::getHilbertEnvelope(grZoomed);
+	TGraph* grZ0Hilbert = FFTtools::getHilbertEnvelope(grZ0);
 
-      // Double_t minY = 0;
-      RootTools::getMaxMin(grZoomedHilbert, eventSummary->coherent[pol][hypInd].peakHilbert, minY);
+	RootTools::getMaxMin(grZ0Hilbert, eventSummary->coherent[pol][pointInd].peakHilbert, minY);
+
+	delete grZ0;
+	delete grZ0Hilbert;
+
+	pointInd++;
 
 
-      delete hZoomedImage;
-      delete grZoomed;
-      delete grZoomedHilbert;
-
-      hypInd++;
+      }
     }
-
     // Flags
+    
+    
+    
     eventSummary->flags.isGood = 1;
-    eventSummary->flags.isRF = header->getTriggerBitRF();
-    eventSummary->flags.isSoftwareTrigger = header->getTriggerBitADU5() | header->getTriggerBitG12() | header->getTriggerBitSoftExt();
+    
     eventSummary->flags.isPayloadBlast = 0; //!< To be determined
     eventSummary->flags.nadirFlag = 0; //!< Not sure I will use this.
     eventSummary->flags.strongCWFlag = 0; //!< Not sure I will use this.
     eventSummary->flags.isVarner = 0; //!< Not sure I will use this.
     eventSummary->flags.isVarner2 = 0; //!< Not sure I will use this.
     eventSummary->flags.pulser = AnitaEventSummary::EventFlags::NONE; //!< Not yet
-    
+
     delete usefulEvent;
 
     eventSummaryTree->Fill();

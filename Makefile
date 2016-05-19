@@ -16,7 +16,7 @@ SRCSUF = ${SrcSuf}
 ifdef ANITA_UTIL_INSTALL_DIR
 ANITA_UTIL_LIB_DIR=${ANITA_UTIL_INSTALL_DIR}/lib
 ANITA_UTIL_INC_DIR=${ANITA_UTIL_INSTALL_DIR}/include
-LD_ANITA_UTIL=-L$(ANITA_UTIL_LIB_DIR) -lBensAnitaTools -lAnitaCorrelator -lAnitaEvent 
+LD_ANITA_UTIL=-L$(ANITA_UTIL_LIB_DIR) -lBensAnitaTools -lAnitaCorrelator -lAnitaEvent -lAnitaAnalysis
 INC_ANITA_UTIL=-I$(ANITA_UTIL_INC_DIR)
 ANITA_UTIL_CALIB_DIR=$(ANITA_UTIL_INSTALL_DIR)/share/anitaCalib
 else
@@ -41,11 +41,10 @@ FFTFLAG =
 endif
 
 #Generic and Site Specific Flags
-CXXFLAGS     = -g -O2 -fPIC $(ROOTCFLAGS) $(FFTFLAG) $(SYSINCLUDES) $(INC_ANITA_UTIL) #-std=c++11 
+CXXFLAGS     = -g -fPIC $(ROOTCFLAGS) $(FFTFLAG) $(SYSINCLUDES) $(INC_ANITA_UTIL) #-std=c++11 
 LDFLAGS      = -g
 
-
-LIBS          = $(ROOTLIBS) -lMathMore -lMinuit -lGpad $(FFTLIBS) $(SYSLIBS) $(LD_ANITA_UTIL) 
+LIBS          = $(ROOTLIBS) -lMathMore -lMinuit -lGpad $(FFTLIBS) $(SYSLIBS) $(LD_ANITA_UTIL)
 GLIBS         = $(ROOTGLIBS) $(SYSLIBS)
 
 #Toggles google performance profile functionality on and off
@@ -61,7 +60,6 @@ endif
 # (You probably don't actually want to commit after every compile, but the prompt is nice)
 #FORCE_GIT=1 
 
-
 # For those who like really bloody pedantic compiler warnings... like me
 HARDCORE_MODE=1
 ifdef HARDCORE_MODE
@@ -69,10 +67,10 @@ CXXFLAGS += -Wall -Wextra -Wshadow -Werror #-Wpedantic
 endif
 
 
-OBJS = 
+OBJS = SunPos.o
 
 
-BINARIES = imagePeakHilbertPeak getWaisHeadings powerSpectra
+BINARIES = imagePeakHilbertPeak getWaisHeadings powerSpectra initialDistributions plotInitialDistributions testSunPos
 
 #Now the bits we're actually compiling
 all: $(OBJS) $(BINARIES) commit
@@ -83,9 +81,6 @@ $(BINARIES): %: %.$(SRCSUF) #$(ROOT_LIBRARY)
 	@echo "<**Compiling**> "
 	@echo $<
 	-$(LD) $(CXXFLAGS) $(LDFLAGS) $(OBJS) $(LIBS) $< -o $@
-ifdef FORCE_GIT
-	-@if test $$? == 0; then git add $<; fi
-endif
 
 %.$(OBJSUF) : %.$(SRCSUF) %.h
 	@echo "<**Compiling**> "$<
