@@ -80,10 +80,15 @@ int main(int argc, char *argv[])
   ProgressBar p(maxEntry-startEntry);
 
 
-  TH2D* hMaxAbsSecondDeriv = new TH2D("hMaxAbsSecondDeriv",
-				      "Maximum value of second derivative; Antenna; abs(2V_{i} - V_{i-1} - V{i+1}); Number of events",
-				      4096, 0, 4096,
-				      NUM_POL*NUM_SEAVEYS, 0, NUM_POL*NUM_SEAVEYS);
+  TH2D* hMaxAbsSecondDeriv[NUM_POL];
+  const char* polNames[NUM_POL] = {"HPol", "VPol"};
+  for(int polInd=0; polInd < NUM_POL; polInd++){
+    TString name = TString::Format("hMaxAbsSecondDeriv_%d", polInd);
+    TString title = TString::Format("Maximum value of second derivative %s; Antenna Index; abs(2V_{i} - V_{i-1} - V_{i+1}) (mV); Events per bin", polNames[polInd]);
+    hMaxAbsSecondDeriv[polInd] = new TH2D(name, title,
+					  NUM_SEAVEYS, 0, NUM_SEAVEYS,
+					  4096, 0, 4096);
+  }
   
   for(Long64_t entry = startEntry; entry < maxEntry; entry++){
     dataQualityChain->GetEntry(entry);
@@ -91,7 +96,7 @@ int main(int argc, char *argv[])
     for(int polInd=0; polInd < NUM_POL; polInd++){
       for(int ant=0; ant < NUM_SEAVEYS; ant++){
 
-	hMaxAbsSecondDeriv->Fill(polInd*NUM_SEAVEYS + ant, maxAbsSecondDeriv[polInd][ant]);
+	hMaxAbsSecondDeriv[polInd]->Fill(ant, maxAbsSecondDeriv[polInd][ant]);
 	
       }
     }

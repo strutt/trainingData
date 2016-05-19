@@ -136,6 +136,7 @@ int main(int argc, char *argv[]){
       calEventChain->GetEntryWithIndex(header->eventNumber);
 
       UsefulAnitaEvent* usefulEvent = new UsefulAnitaEvent(calEvent, WaveCalType::kAddPeds);
+      usefulEvent->setAlfaFilterFlag(false);
 
       eventNumber = header->eventNumber;
 
