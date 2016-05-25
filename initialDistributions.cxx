@@ -53,8 +53,8 @@ int main(int argc, char *argv[])
   TChain* calEventChain = new TChain("eventTree");
   
   for(Int_t run=firstRun; run<=lastRun; run++){
-    TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/headFile%d.root", run, run);
-    // TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/decimatedHeadFile%d.root", run, run);
+    // TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/headFile%d.root", run, run);
+    TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/decimatedHeadFile%d.root", run, run);
     headChain->Add(fileName);
     fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/gpsEvent%d.root", run, run);
     gpsChain->Add(fileName);
@@ -116,15 +116,10 @@ int main(int argc, char *argv[])
 
     headChain->GetEntry(entry);
 
-    // if(header->eventNumber!=60835259){
-    //   p++;
-    //   continue;
-    // }
-
-    Int_t isMinBias = RootTools::isMinBiasSampleEvent(header);
+    // Int_t isMinBias = RootTools::isMinBiasSampleEvent(header);
     
-    if(isMinBias > 0){
-    // {
+    // if(isMinBias > 0){
+    {
       // Int_t rf = header->getTriggerBitRF();
 
       // std::cout << isMinBias << "\t" << rf << std::endl;
@@ -184,7 +179,6 @@ int main(int argc, char *argv[])
 
 	  // std::cerr << " main loop " << peakValue << "\t" <<  peakPhiDeg << "\t" <<  peakThetaDeg << std::endl;
 
-	
 	  cc->getFinePeakInfo(pol, peakInd, 
 			      eventSummary->peak[pol][pointInd].value,
 			      eventSummary->peak[pol][pointInd].phi,
@@ -195,7 +189,7 @@ int main(int argc, char *argv[])
 	  // 	    << eventSummary->peak[pol][pointInd].theta << std::endl;
 
 	  // TH2D* hMap2 = cc->getZoomMap(pol);
-	  // TString n2 = hMap2->GetName();	  
+	  // TString n2 = hMap2->GetName();
 	  // hMap2->SetName(n2 + TString::Format("_%d", peakInd));
 	  // hMap2->Write();
 	  // delete hMap2;
@@ -215,14 +209,10 @@ int main(int argc, char *argv[])
 	  delete grZ0Hilbert;
 
 	  pointInd++;
-
-
 	}
       }
       // Flags
-    
-    
-    
+        
       eventSummary->flags.isGood = 1;
     
       eventSummary->flags.isPayloadBlast = 0; //!< To be determined.

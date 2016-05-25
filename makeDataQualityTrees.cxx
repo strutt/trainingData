@@ -185,7 +185,7 @@ int main(int argc, char *argv[]){
       }
 
       dataQualityTree->Fill();
-      delete usefulEvent;      
+      delete usefulEvent;
     }
     p.inc(entry, maxEntry);
   }

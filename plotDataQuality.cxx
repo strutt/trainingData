@@ -29,7 +29,6 @@
 
 
 
-
 int main(int argc, char *argv[])
 {
 
@@ -66,6 +65,8 @@ int main(int argc, char *argv[])
   dataQualityChain->SetBranchAddress("maxAbsSecondDeriv", &maxAbsSecondDeriv[0][0]);
   Double_t maxVolts[NUM_POL][NUM_SEAVEYS];
   dataQualityChain->SetBranchAddress("maxVolts", &maxVolts[0][0]);
+  Int_t numPoints[NUM_POL][NUM_SEAVEYS];
+  dataQualityChain->SetBranchAddress("numPoints", &numPoints[0][0]);
 
   OutputConvention oc(argc, argv);
   TString outFileName = oc.getOutputFileName();
@@ -83,9 +84,24 @@ int main(int argc, char *argv[])
   ProgressBar p(maxEntry-startEntry);
 
   const double maxVoltsThresh = 400;
+  const double saturationVolts = 1500;
+  // const int maxPhiAboveMaxVoltsThresh = 9;
   TH2D* hMaxAbsSecondDeriv[NUM_POL];
   TH2D* hMaxVolts[NUM_POL];
   TH1D* hNumChannelsAboveMaxVolts[NUM_POL];
+  TH1D* hNumPhiAboveMaxVolts[NUM_POL];
+
+  TString name0 = TString::Format("hAnyChannelsAboveSaturation");
+  TString title0 = TString::Format("Any sample > %4.0lf (mV); Sample greater than %4.0lf mV? ; Number of events",
+				  saturationVolts, saturationVolts);
+  TH1D* hAnyChannelsAboveSaturation = new TH1D(name0, title0, 2, 0, 2);
+  hAnyChannelsAboveSaturation->GetXaxis()->SetBinLabel(1, "False");
+  hAnyChannelsAboveSaturation->GetXaxis()->SetBinLabel(2, "True");
+  hAnyChannelsAboveSaturation->GetXaxis()->SetTitleOffset(0.01);
+
+  name0 = TString::Format("hNumPoints");
+  title0 = TString::Format("Number of samples in waveform; Number of samples; Number of channels");
+  TH1D* hNumPoints = new TH1D(name0, title0, NUM_SAMP, 0, NUM_SAMP);
   
   const char* polNames[NUM_POL] = {"HPol", "VPol"};
   for(int polInd=0; polInd < NUM_POL; polInd++){
@@ -100,27 +116,54 @@ int main(int argc, char *argv[])
     hMaxVolts[polInd] = new TH2D(name, title,
 				 NUM_SEAVEYS, 0, NUM_SEAVEYS,
 				 4096, 0, 4096);
-    
+
     name = TString::Format("hNumChannelsAboveMaxVolts_%d", polInd);
     title = TString::Format("Number of %s channels where maximum volts > above %4.0lf volts; Number of channels; Number of events", polNames[polInd], maxVoltsThresh);
     hNumChannelsAboveMaxVolts[polInd] = new TH1D(name, title,
 						 NUM_SEAVEYS+1, 0, NUM_SEAVEYS+1);
+
+    name = TString::Format("hNumPhiAboveMaxVolts_%d", polInd);
+    title = TString::Format("Number of %s #phi-sectors where sample > %4.0lf mV; Number of #phi-sectors; Number of events", polNames[polInd], maxVoltsThresh);
+    hNumPhiAboveMaxVolts[polInd] = new TH1D(name, title,
+						 NUM_PHI+1, 0, NUM_PHI+1);
+    
   }
 
   for(Long64_t entry = startEntry; entry < maxEntry; entry++){
     dataQualityChain->GetEntry(entry);
 
+    Int_t anyChannelAboveSaturation = 0;
     for(int polInd=0; polInd < NUM_POL; polInd++){
       Int_t numAboveVoltsThresh = 0;
+      Int_t phiAboveMaxVoltsThresh[NUM_PHI] = {0};
+      for(int phi=0; phi<NUM_PHI; phi++){
+	phiAboveMaxVoltsThresh[phi] = 0;
+      }
+      
       for(int ant=0; ant < NUM_SEAVEYS; ant++){
-
+	hNumPoints->Fill(numPoints[polInd][ant]);
 	hMaxVolts[polInd]->Fill(ant, maxVolts[polInd][ant]);
 	if(maxVolts[polInd][ant] > maxVoltsThresh){
 	  numAboveVoltsThresh++;
+	  int phi = ant%NUM_PHI;
+	  phiAboveMaxVoltsThresh[phi] = 1;
+	}
+
+	if(maxVolts[polInd][ant] > saturationVolts){
+	  anyChannelAboveSaturation = 1;
 	}
       }
+
+      Int_t numPhiAboveMaxVoltsThresh = 0;
+      for(int phi=0; phi<NUM_PHI; phi++){
+	if(phiAboveMaxVoltsThresh[phi] > 0){
+	  numPhiAboveMaxVoltsThresh++;
+	}
+      }      
       hNumChannelsAboveMaxVolts[polInd]->Fill(numAboveVoltsThresh);
+      hNumPhiAboveMaxVolts[polInd]->Fill(numPhiAboveMaxVoltsThresh);
     }
+    hAnyChannelsAboveSaturation->Fill(anyChannelAboveSaturation);
     p++;
   }
   outFile->Write();
