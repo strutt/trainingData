@@ -55,10 +55,10 @@ int main(int argc, char *argv[])
 
     // if(run >= 211 && run <= 263){
     //   continue;
+    // // }
+    // if(run == 241){
+    //   continue;
     // }
-    if(run == 241){
-      continue;
-    }
       
     
     TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/headFile%d.root", run, run);
@@ -126,7 +126,7 @@ int main(int argc, char *argv[])
   headChain->GetEntry(0);
   UInt_t firstRealTime = header->realTime;
   headChain->GetEntry(headChain->GetEntries()-1);
-  UInt_t lastRealTime = header->realTime;  
+  UInt_t lastRealTime = header->realTime;
 
   Long64_t nEntries = eventSummaryChain->GetEntries();
   Long64_t maxEntry = 0; //2500;
@@ -135,17 +135,10 @@ int main(int argc, char *argv[])
   std::cout << "Processing " << maxEntry << " of " << nEntries << " entries." << std::endl;
   ProgressBar p(maxEntry-startEntry);
 
+
   const int numTrigTypes = 2; // rf=0 and min bias=1
   const int numSunDirs = 2; // away from the sun=0, towards the sun=1
-  // const int numUpDownDirs = 2; // downwards=0 and upwards=1;
-  // const int numNoiseStates= 2; // 0 is quiet, 1 is noisy
   
-  // TH2D* hPeakDirWrtNorth[NUM_POL][numTrigTypes][numSunDirs][numUpDownDirs][numNoiseStates];
-  // TH2D* hPeakTheta[NUM_POL][numTrigTypes][numSunDirs][numUpDownDirs][numNoiseStates];
-  // TH2D* hDeltaSolarPhiDeg[NUM_POL][numTrigTypes][numSunDirs][numUpDownDirs][numNoiseStates];
-  // TH2D* hImagePeakHilbertPeak[NUM_POL][numTrigTypes][numSunDirs][numUpDownDirs][numNoiseStates];
-  // TProfile2D* hpDeltaSolarPhiDeg[NUM_POL][numTrigTypes][numSunDirs][numUpDownDirs][numNoiseStates];
-
   TH2D* hPeakDirWrtNorth[NUM_POL][numTrigTypes][numSunDirs];
   TH2D* hPeakTheta[NUM_POL][numTrigTypes][numSunDirs];
   TH2D* hImagePeakHilbertPeak[NUM_POL][numTrigTypes][numSunDirs];
@@ -564,6 +557,12 @@ int main(int argc, char *argv[])
   }
 
 
+  TFile* quietHPolFile = new TFile("definingThermalCut/quietHPolEventFile.root", "recreate");
+  TTree* quietHPolEventTree = new TTree("eventSummaryTree", "eventSummaryTree");
+  AnitaEventSummary* quietEvent = NULL;
+  quietHPolEventTree->Branch("eventSummary", &quietEvent);
+  
+
   // TGraph* grSunPhiDeg = new TGraph();
   // TGraph* grSunThetaDeg = new TGraph();
 
@@ -801,7 +800,7 @@ int main(int argc, char *argv[])
 	  hHuntingPhiImagePeak[polInd]->Fill(header->realTime, directionWrtNorth);
 	  hHuntingThetaImagePeak[polInd]->Fill(header->realTime, recoThetaDeg);
 	  grHuntingPhiImagePeak[polInd]->SetPoint(grHuntingPhiImagePeak[polInd]->GetN(), header->realTime, directionWrtNorth);
-	  grHuntingThetaImagePeak[polInd]->SetPoint(grHuntingThetaImagePeak[polInd]->GetN(), header->realTime, recoThetaDeg);
+	  grHuntingThetaImagePeak[polInd]->SetPoint(grHuntingThetaImagePeak[polInd]->GetN(), header->realTime, recoThetaDeg);	  
 	  if(polInd==0){
 	    std::cout << std::endl << header->run << "\t" << header->eventNumber << "\t"
 		      << imagePeak << "\t" << hilbertPeak << std::endl;
@@ -821,6 +820,11 @@ int main(int argc, char *argv[])
 
       if(sun > 0 && goodTime > 0){
 	hImagePeakSolarTheta[polInd]->Fill(solarThetaDeg, imagePeak);
+      }
+      if(sun==0 && goodTime > 0 && polInd==0){
+	// it's a quiet time HPol min bias event.
+	quietEvent = eventSummary;
+	quietHPolEventTree->Fill();
       }
     }
 
@@ -870,6 +874,9 @@ int main(int argc, char *argv[])
   
   outFile->Write();
   outFile->Close();
+
+  quietHPolFile->Write();
+  quietHPolFile->Close();  
 
   return 0;
 }

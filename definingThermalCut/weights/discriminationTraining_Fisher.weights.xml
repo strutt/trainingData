@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<MethodSetup Method="Fisher::Fisher">
+  <GeneralInfo>
+    <Info name="TMVA Release" value="4.2.1 [262657]"/>
+    <Info name="ROOT Release" value="6.06/02 [394754]"/>
+    <Info name="Creator" value="benstrutt"/>
+    <Info name="Date" value="Wed May 25 17:17:06 2016"/>
+    <Info name="Host" value="Darwin yosemitevm.local 14.5.0 Darwin Kernel Version 14.5.0: Mon Jan 11 18:48:35 PST 2016; root:xnu-2782.50.2~1/RELEASE_X86_64 x86_64"/>
+    <Info name="Dir" value="/Users/benstrutt/UCL/ANITA/anita3Analysis/decimatedDistributions/definingThermalCut"/>
+    <Info name="Training events" value="321786"/>
+    <Info name="TrainingTime" value="1.29606962e-01"/>
+    <Info name="AnalysisType" value="Classification"/>
+  </GeneralInfo>
+  <Options>
+    <Option name="V" modified="Yes">False</Option>
+    <Option name="VerbosityLevel" modified="No">Default</Option>
+    <Option name="VarTransform" modified="No">None</Option>
+    <Option name="H" modified="Yes">True</Option>
+    <Option name="CreateMVAPdfs" modified="No">False</Option>
+    <Option name="IgnoreNegWeightsInTraining" modified="No">False</Option>
+    <Option name="Method" modified="Yes">Fisher</Option>
+  </Options>
+  <Variables NVar="2">
+    <Variable VarIndex="0" Expression="peak[0][1].value" Label="peak[0][1].value" Title="peak[0][1].value" Unit="" Internal="peak_0__1_.value" Type="D" Min="2.78257895e-02" Max="7.40023911e-01"/>
+    <Variable VarIndex="1" Expression="coherent[0][1].peakHilbert" Label="coherent[0][1].peakHilbert" Title="coherent[0][1].peakHilbert" Unit="" Internal="coherent_0__1_.peakHilbert" Type="D" Min="1.00543613e+01" Max="5.00560120e+02"/>
+  </Variables>
+  <Spectators NSpec="0"/>
+  <Classes NClass="2">
+    <Class Name="Signal" Index="0"/>
+    <Class Name="Background" Index="1"/>
+  </Classes>
+  <Transformations NTransformations="0"/>
+  <MVAPdfs/>
+  <Weights NCoeff="3">
+    <Coefficient Index="0" Value="-2.2652852141684807e+00"/>
+    <Coefficient Index="1" Value="2.3613365361798479e+01"/>
+    <Coefficient Index="2" Value="-4.0577177009874732e-02"/>
+  </Weights>
+</MethodSetup>

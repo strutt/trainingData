@@ -3,7 +3,7 @@
 ##              and mac os x
 ## Ryan Nichol <rjn@hep.ucl.ac.uk>
 ##############################################################################
-include ../Makefile.arch
+include ../../Makefile.arch
 
 #Site Specific  Flags
 SYSINCLUDES	= -I/usr/local/include
@@ -44,7 +44,7 @@ endif
 CXXFLAGS     = -g -O2 -fPIC $(ROOTCFLAGS) $(FFTFLAG) $(SYSINCLUDES) $(INC_ANITA_UTIL) #-std=c++11 
 LDFLAGS      = -g
 
-LIBS          = $(ROOTLIBS) -lMathMore -lMinuit -lTMVA -lGpad $(FFTLIBS) $(SYSLIBS) $(LD_ANITA_UTIL)
+LIBS          = $(ROOTLIBS) -lMathMore -lMinuit -lTMVA -lGpad -lXMLIO $(FFTLIBS) $(SYSLIBS) $(LD_ANITA_UTIL)
 GLIBS         = $(ROOTGLIBS) $(SYSLIBS)
 
 #Toggles google performance profile functionality on and off
@@ -69,7 +69,7 @@ endif
 
 OBJS = 
 
-BINARIES = imagePeakHilbertPeak getWaisHeadings powerSpectra initialDistributions plotInitialDistributions project plotMinBiasDistributions makeDataQualityTrees plotDataQuality templateSelfTriggeredBlast generateAngularResolutionTree reconstructPeaks waisDistributions
+BINARIES = defineThermalCut plotDefineThermalCut
 
 #Now the bits we're actually compiling
 all: $(OBJS) $(BINARIES) commit
