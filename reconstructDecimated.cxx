@@ -29,10 +29,8 @@
 #include "AnitaEventSummary.h"
 #include "FFTtools.h"
 
-#include <signal.h>
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]){
 
   if(!(argc==3 || argc==2)){
     std::cerr << "Usage 1: " << argv[0] << " [run]" << std::endl;
@@ -51,10 +49,11 @@ int main(int argc, char *argv[])
   TChain* headChain = new TChain("headTree");
   TChain* gpsChain = new TChain("adu5PatTree");
   TChain* calEventChain = new TChain("eventTree");
+
   
   for(Int_t run=firstRun; run<=lastRun; run++){
-    TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/headFile%d.root", run, run);
-    // TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/decimatedHeadFile%d.root", run, run);
+    // TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/headFile%d.root", run, run);
+    TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/decimatedHeadFile%d.root", run, run);
     headChain->Add(fileName);
     fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/gpsEvent%d.root", run, run);
     gpsChain->Add(fileName);
@@ -93,12 +92,26 @@ int main(int argc, char *argv[])
     return 1;
   }
 
-  cc->kDoSimpleSatelliteFiltering = 1;
-  if(cc->kDoSimpleSatelliteFiltering > 0){
-    TNamed* comments = new TNamed("comments", "Applied simple, static notch at 260#pm26 MHz and 370#pm20");
-    comments->Write();
-    delete comments;
-  }
+  CrossCorrelator::SimpleNotch notch260("n260Notch", "260MHz Satellite And 200MHz Notch Notch",
+					260-26, 260+26);
+  CrossCorrelator::SimpleNotch notch370("n370Notch", "370MHz Satellite Notch",
+					370-26, 370+26);
+  cc->addNotch(notch260);
+  cc->addNotch(notch370);
+
+
+  const Int_t myNumPeaksCoarse = 2;
+  const Int_t myNumPeaksFine = 2;
+    
+  TNamed* comments = new TNamed("comments", "Applied simple, static notch at 260#pm26 MHz and 370#pm26");
+  comments->Write();
+  delete comments;
+
+  TNamed* comments2 = new TNamed("comments2",
+				 TString::Format("%d coarse peaks, %d fine peaks",
+						 myNumPeaksCoarse, myNumPeaksFine).Data());
+  comments2->Write();
+  delete comments2;  
     
   TTree* eventSummaryTree = new TTree("eventSummaryTree", "eventSummaryTree");
   // AnitaEventSummary* eventSummary = new AnitaEventSummary();
@@ -106,7 +119,7 @@ int main(int argc, char *argv[])
   eventSummaryTree->Branch("eventSummary", &eventSummary);
   
   Long64_t nEntries = headChain->GetEntries();
-  Long64_t maxEntry = 0; //2500;
+  Long64_t maxEntry = 0; //2513; //33;
   Long64_t startEntry = 0;
   if(maxEntry<=0 || maxEntry > nEntries) maxEntry = nEntries;
   std::cout << "Processing " << maxEntry << " of " << nEntries << " entries." << std::endl;
@@ -116,48 +129,45 @@ int main(int argc, char *argv[])
 
     headChain->GetEntry(entry);
 
-    Int_t isMinBias = RootTools::isMinBiasSampleEvent(header);
+    // Int_t isMinBias = RootTools::isMinBiasSampleEvent(header);
+    // if(isMinBias > 0){
+    {
     
-    if(isMinBias > 0){
-      // {
-      // Int_t rf = header->getTriggerBitRF();
-
-      // std::cout << isMinBias << "\t" << rf << std::endl;
-
       gpsChain->GetEntryWithIndex(header->eventNumber);
       calEventChain->GetEntryWithIndex(header->eventNumber);
 
       UsefulAnitaEvent* usefulEvent = new UsefulAnitaEvent(calEvent);
+
       UsefulAdu5Pat usefulPat(pat);
       // cc->correlateEvent(usefulEvent);
 
-      const Int_t myNumPeaks = 2;
-      cc->reconstructEvent(usefulEvent, myNumPeaks, myNumPeaks);
+      cc->reconstructEvent(usefulEvent, myNumPeaksCoarse, myNumPeaksFine);
+
     
       eventSummary = new AnitaEventSummary(header, &usefulPat);
       // std::cout << eventSummary->sun.theta << "\t" << eventSummary->sun.phi << std::endl;
 
+      const Int_t coherentDeltaPhi = 0;
+      Double_t minY = 0;
       for(Int_t polInd=0; polInd < AnitaPol::kNotAPol; polInd++){
 	AnitaPol::AnitaPol_t pol = (AnitaPol::AnitaPol_t) polInd;
 
 	Int_t pointInd=0;
-	for(Int_t peakInd=0; peakInd < myNumPeaks; peakInd++){
+	for(Int_t peakInd=0; peakInd < myNumPeaksCoarse; peakInd++){
 	
-	  Double_t minY = 0;
 
 	  cc->getCoarsePeakInfo(pol, peakInd,
 				eventSummary->peak[pol][pointInd].value,
 				eventSummary->peak[pol][pointInd].phi,
 				eventSummary->peak[pol][pointInd].theta);
 
-
-	  const Int_t coherentDeltaPhi = 2;
+	
 	  TGraph* grGlobal0 = cc->makeCoherentlySummedWaveform(pol,
 							       eventSummary->peak[pol][pointInd].phi,
 							       eventSummary->peak[pol][pointInd].theta,
 							       coherentDeltaPhi,
 							       eventSummary->peak[pol][pointInd].snr);
-
+	
 	  TGraph* grGlobal0Hilbert = FFTtools::getHilbertEnvelope(grGlobal0);
       
 	  RootTools::getMaxMin(grGlobal0Hilbert, eventSummary->coherent[pol][peakInd].peakHilbert, minY);
@@ -166,35 +176,13 @@ int main(int argc, char *argv[])
 	  delete grGlobal0Hilbert;
 
 	  pointInd++;
-
-	  // Double_t peakValue;
-	  // Double_t peakPhiDeg;
-
-	  // Double_t peakThetaDeg;
-	  // TH2D* hMap = cc->getMap(pol, peakValue, peakPhiDeg, peakThetaDeg);
-	  // TString n1 = hMap->GetName();	  
-	  // hMap->SetName(n1 + TString::Format("_%d", peakInd));
-	  // hMap->Write();
-	  // delete hMap;
-
-	  // std::cerr << " main loop " << peakValue << "\t" <<  peakPhiDeg << "\t" <<  peakThetaDeg << std::endl;
-
+	}
+	for(Int_t peakInd=0; peakInd < myNumPeaksFine; peakInd++){      
 	  cc->getFinePeakInfo(pol, peakInd, 
 			      eventSummary->peak[pol][pointInd].value,
 			      eventSummary->peak[pol][pointInd].phi,
 			      eventSummary->peak[pol][pointInd].theta);
 
-	  // std::cerr << "Zoom " << eventSummary->peak[pol][pointInd].value << "\t"
-	  // 	    << eventSummary->peak[pol][pointInd].phi << "\t"
-	  // 	    << eventSummary->peak[pol][pointInd].theta << std::endl;
-
-	  // TH2D* hMap2 = cc->getZoomMap(pol);
-	  // TString n2 = hMap2->GetName();
-	  // hMap2->SetName(n2 + TString::Format("_%d", peakInd));
-	  // hMap2->Write();
-	  // delete hMap2;
-
-	  
 	  TGraph* grZ0 = cc->makeUpsampledCoherentlySummedWaveform(pol,
 								   eventSummary->peak[pol][pointInd].phi,
 								   eventSummary->peak[pol][pointInd].theta,
@@ -227,7 +215,6 @@ int main(int argc, char *argv[])
       eventSummaryTree->Fill();
       delete eventSummary;
     }
-    // p++;
     p.inc(entry, nEntries);
   }
   

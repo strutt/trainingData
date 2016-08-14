@@ -7,15 +7,16 @@ set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_VERBOSE_MAKEFILE ON)
 set(CMAKE_COLOR_MAKEFILE ON)
 
+# If ROOTSYS is defined in the usual way then includes are at $ROOTSYS/include, same for libs.
 if(DEFINED $ENV{ROOTSYS})
   list(APPEND CMAKE_PREFIX_PATH $ENV{ROOTSYS})
-else()
+
+# If not then we can access the variables via the ROOT CMake stuff directly  
+else() 
   execute_process(COMMAND root-config --etcdir OUTPUT_VARIABLE ROOT_ETC_DIR OUTPUT_STRIP_TRAILING_WHITESPACE)
-  #set(ROOT_ETC_DIR "${ROOT_ETC_DIR}/cmake")
-  #message("is this root-config --etcdir? ${ROOT_ETC_DIR}")
+  set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${ROOT_ETC_DIR}/cmake)
 endif()
-#message("CMAKE_PREFIX_PATH = ${CMAKE_PREFIX_PATH}")
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${ROOT_ETC_DIR}/cmake)
+
 
 if(DEFINED ENV{ANITA_UTIL_INSTALL_DIR})
     message("ANITA_UTIL_INSTALL_DIR is set to $ENV{ANITA_UTIL_INSTALL_DIR}")
@@ -56,7 +57,7 @@ link_directories(${UTIL_LIB_DIR})
 set(ANITA_LIBS AnitaEvent AnitaAnalysis AnitaAnalysisTools AnitaCorrelator RootFftwWrapper)
 
 # removed imagePeakHilbertPeak getWaisHeadings
-set(BINARIES powerSpectra initialDistributions minBiasDistributions plotInitialDistributions project plotMinBiasDistributions makeDataQualityTrees makeMinBiasDataQualityTrees plotDataQuality templateSelfTriggeredBlast generateAngularResolutionTree reconstructPeaks waisDistributions)
+set(BINARIES powerSpectra reconstructDecimated reconstructMinBias plotInitialDistributions project plotMinBiasDistributions makeDataQualityTrees makeMinBiasDataQualityTrees plotDataQuality templateSelfTriggeredBlast generateAngularResolutionTree reconstructPeaks waisDistributions)
 
 FOREACH(binary ${BINARIES})
   MESSAGE(STATUS "Process file: ${binary}")
