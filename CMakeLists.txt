@@ -57,7 +57,7 @@ link_directories(${UTIL_LIB_DIR})
 set(ANITA_LIBS AnitaEvent AnitaAnalysis AnitaAnalysisTools AnitaCorrelator RootFftwWrapper)
 
 # removed powerSpectra imagePeakHilbertPeak getWaisHeadings plotInitialDistributions project plotMinBiasDistributions makeDataQualityTrees makeMinBiasDataQualityTrees plotDataQuality templateSelfTriggeredBlast generateAngularResolutionTree reconstructPeaks waisDistributions)
-set(BINARIES reconstructDecimated reconstructMinBias reconstructWais plotReconstructedWais plotReconstructedMinBias plotReconstructedDecimated makeIndexedHeaderTrees)
+set(BINARIES reconstructDecimated reconstructMinBias reconstructWais plotReconstructedWais plotReconstructedMinBias plotReconstructedDecimated makeIndexedHeaderTrees examineCoherentlySummedWaveforms)
 
 FOREACH(binary ${BINARIES})
   MESSAGE(STATUS "Process file: ${binary}")
