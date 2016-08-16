@@ -4,7 +4,7 @@
  Email: b.strutt.12@ucl.ac.uk
 
  Description:
-             Reconstruct decimated data set.
+             Reconstruct Min Bias data set.
 ********************************************************************************************************* */
 
 #include "TFile.h"
@@ -52,7 +52,8 @@ int main(int argc, char *argv[]){
 
   
   for(Int_t run=firstRun; run<=lastRun; run++){
-    TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/headFile%d.root", run, run);
+    TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/indexedBlindHeadFile%d.root", run, run);
+    // TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/headFile%d.root", run, run);    
     // TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/decimatedHeadFile%d.root", run, run);
     headChain->Add(fileName);
     fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/gpsEvent%d.root", run, run);
@@ -74,8 +75,9 @@ int main(int argc, char *argv[]){
     return 1;
   }
   
-  calEventChain->BuildIndex("eventNumber");
-  gpsChain->BuildIndex("eventNumber");
+  // calEventChain->BuildIndex("eventNumber");
+  // gpsChain->BuildIndex("eventNumber");
+  // headChain->BuildIndex("eventNumber");
 
   RawAnitaHeader* header = NULL;
   headChain->SetBranchAddress("header", &header);
@@ -92,18 +94,23 @@ int main(int argc, char *argv[]){
     return 1;
   }
 
+  // CrossCorrelator::SimpleNotch notch260("n260Notch", "260MHz Satellite Everything Below",
+  // 					0-26, 260+26);
   CrossCorrelator::SimpleNotch notch260("n260Notch", "260MHz Satellite And 200MHz Notch Notch",
-					260-26, 260+26);
+  					260-26, 260+26);
   CrossCorrelator::SimpleNotch notch370("n370Notch", "370MHz Satellite Notch",
 					370-26, 370+26);
+  CrossCorrelator::SimpleNotch notch762("n762Notch", "762MHz Satellite Notch (one bin wide)",
+					762-8, 762+8);  
   cc->addNotch(notch260);
   cc->addNotch(notch370);
+  cc->addNotch(notch762);  
 
 
   const Int_t myNumPeaksCoarse = 1;
   const Int_t myNumPeaksFine = 1;
     
-  TNamed* comments = new TNamed("comments", "Applied simple, static notch at 260#pm26 MHz and 370#pm26");
+  TNamed* comments = new TNamed("comments", "Applied simple, static notch at 260#pm26 MHz and 370#pm26 and 762#pm8MHz");
   comments->Write();
   delete comments;
 
@@ -132,8 +139,11 @@ int main(int argc, char *argv[]){
     Int_t isMinBias = RootTools::isMinBiasSampleEvent(header);
     if(isMinBias > 0){
     
-      gpsChain->GetEntryWithIndex(header->eventNumber);
-      calEventChain->GetEntryWithIndex(header->eventNumber);
+      gpsChain->GetEntry(entry);
+      calEventChain->GetEntry(entry);
+      // gpsChain->GetEntryWithIndex(header->eventNumber);
+      // calEventChain->GetEntryWithIndex(header->eventNumber);
+      
 
       UsefulAnitaEvent* usefulEvent = new UsefulAnitaEvent(calEvent);
 
