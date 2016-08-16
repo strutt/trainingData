@@ -100,8 +100,8 @@ int main(int argc, char *argv[]){
   					260-26, 260+26);
   CrossCorrelator::SimpleNotch notch370("n370Notch", "370MHz Satellite Notch",
 					370-26, 370+26);
-  CrossCorrelator::SimpleNotch notch762("n762Notch", "762MHz Satellite Notch (one bin wide)",
-					762-8, 762+8);  
+  CrossCorrelator::SimpleNotch notch762("n762Notch", "762MHz Satellite Notch (three bins wide)",
+					762-12, 762+12);  
   cc->addNotch(notch260);
   cc->addNotch(notch370);
   cc->addNotch(notch762);  
@@ -110,7 +110,7 @@ int main(int argc, char *argv[]){
   const Int_t myNumPeaksCoarse = 1;
   const Int_t myNumPeaksFine = 1;
     
-  TNamed* comments = new TNamed("comments", "Applied simple, static notch at 260#pm26 MHz and 370#pm26 and 762#pm8MHz");
+  TNamed* comments = new TNamed("comments", "Applied simple, static notch at 260#pm26 MHz and 370#pm26 and 762#pm12MHz");
   comments->Write();
   delete comments;
 
