@@ -292,7 +292,6 @@ int main(int argc, char *argv[])
 
     for(int freqInd=0; freqInd < grAve[polInd]->GetN(); freqInd++){
       grAve[polInd]->GetY()[freqInd] /= numGr[polInd];
-      grAve[polInd]->GetY()[freqInd] /= numGr[polInd];
 
       grAve[polInd]->GetY()[freqInd] = 10*TMath::Log10(grAve[polInd]->GetY()[freqInd]);
     }
