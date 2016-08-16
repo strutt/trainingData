@@ -44,6 +44,10 @@ int main(int argc, char *argv[]){
   const Int_t firstRun = atoi(argv[1]);
   const Int_t lastRun = firstRun; //argc==3 ? atoi(argv[2]) : firstRun;
 
+  if(firstRun < 331 || lastRun > 354){
+    return 1;
+  }
+  
   CrossCorrelator* cc = new CrossCorrelator();
 
   TChain* headChain = new TChain("headTree");
@@ -52,8 +56,8 @@ int main(int argc, char *argv[]){
 
   
   for(Int_t run=firstRun; run<=lastRun; run++){
-    // TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/headFile%d.root", run, run);
-    TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/decimatedHeadFile%d.root", run, run);
+    TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/headFile%d.root", run, run);
+    // TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/decimatedHeadFile%d.root", run, run);
     headChain->Add(fileName);
     fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/gpsEvent%d.root", run, run);
     gpsChain->Add(fileName);
@@ -129,91 +133,96 @@ int main(int argc, char *argv[]){
 
     headChain->GetEntry(entry);
 
-    // Int_t isMinBias = RootTools::isMinBiasSampleEvent(header);
-    // if(isMinBias > 0){
-    {
-    
-      gpsChain->GetEntryWithIndex(header->eventNumber);
-      calEventChain->GetEntryWithIndex(header->eventNumber);
+    if((header->trigType & 1)==1){
 
-      UsefulAnitaEvent* usefulEvent = new UsefulAnitaEvent(calEvent);
+      gpsChain->GetEntryWithIndex(header->eventNumber);
 
       UsefulAdu5Pat usefulPat(pat);
-      // cc->correlateEvent(usefulEvent);
+      const Double_t maxDeltaTriggerTimeNs = 1200;  
+      UInt_t triggerTimeNsExpected = usefulPat.getWaisDivideTriggerTimeNs();
+      UInt_t triggerTimeNs = header->triggerTimeNs;
+      Int_t deltaTriggerTimeNs = Int_t(triggerTimeNs) - Int_t(triggerTimeNsExpected);
+      if(TMath::Abs(deltaTriggerTimeNs) < maxDeltaTriggerTimeNs){
+	calEventChain->GetEntryWithIndex(header->eventNumber);
 
-      cc->reconstructEvent(usefulEvent, myNumPeaksCoarse, myNumPeaksFine);
-
+	UsefulAnitaEvent* usefulEvent = new UsefulAnitaEvent(calEvent);
     
-      eventSummary = new AnitaEventSummary(header, &usefulPat);
-      // std::cout << eventSummary->sun.theta << "\t" << eventSummary->sun.phi << std::endl;
+      
+	// cc->correlateEvent(usefulEvent);
 
-      const Int_t coherentDeltaPhi = 0;
-      Double_t minY = 0;
-      for(Int_t polInd=0; polInd < AnitaPol::kNotAPol; polInd++){
-	AnitaPol::AnitaPol_t pol = (AnitaPol::AnitaPol_t) polInd;
+	cc->reconstructEvent(usefulEvent, myNumPeaksCoarse, myNumPeaksFine);
+    
+	eventSummary = new AnitaEventSummary(header, &usefulPat);
+	// std::cout << eventSummary->sun.theta << "\t" << eventSummary->sun.phi << std::endl;
 
-	Int_t pointInd=0;
-	for(Int_t peakInd=0; peakInd < myNumPeaksCoarse; peakInd++){
+	const Int_t coherentDeltaPhi = 0;
+	Double_t minY = 0;
+	for(Int_t polInd=0; polInd < AnitaPol::kNotAPol; polInd++){
+	  AnitaPol::AnitaPol_t pol = (AnitaPol::AnitaPol_t) polInd;
+
+	  Int_t pointInd=0;
+	  for(Int_t peakInd=0; peakInd < myNumPeaksCoarse; peakInd++){
 	
 
-	  cc->getCoarsePeakInfo(pol, peakInd,
+	    cc->getCoarsePeakInfo(pol, peakInd,
+				  eventSummary->peak[pol][pointInd].value,
+				  eventSummary->peak[pol][pointInd].phi,
+				  eventSummary->peak[pol][pointInd].theta);
+
+	
+	    TGraph* grGlobal0 = cc->makeCoherentlySummedWaveform(pol,
+								 eventSummary->peak[pol][pointInd].phi,
+								 eventSummary->peak[pol][pointInd].theta,
+								 coherentDeltaPhi,
+								 eventSummary->peak[pol][pointInd].snr);
+	
+	    TGraph* grGlobal0Hilbert = FFTtools::getHilbertEnvelope(grGlobal0);
+      
+	    RootTools::getMaxMin(grGlobal0Hilbert, eventSummary->coherent[pol][peakInd].peakHilbert, minY);
+      
+	    delete grGlobal0;
+	    delete grGlobal0Hilbert;
+
+	    pointInd++;
+	  }
+	  for(Int_t peakInd=0; peakInd < myNumPeaksFine; peakInd++){      
+	    cc->getFinePeakInfo(pol, peakInd, 
 				eventSummary->peak[pol][pointInd].value,
 				eventSummary->peak[pol][pointInd].phi,
 				eventSummary->peak[pol][pointInd].theta);
 
-	
-	  TGraph* grGlobal0 = cc->makeCoherentlySummedWaveform(pol,
-							       eventSummary->peak[pol][pointInd].phi,
-							       eventSummary->peak[pol][pointInd].theta,
-							       coherentDeltaPhi,
-							       eventSummary->peak[pol][pointInd].snr);
-	
-	  TGraph* grGlobal0Hilbert = FFTtools::getHilbertEnvelope(grGlobal0);
-      
-	  RootTools::getMaxMin(grGlobal0Hilbert, eventSummary->coherent[pol][peakInd].peakHilbert, minY);
-      
-	  delete grGlobal0;
-	  delete grGlobal0Hilbert;
+	    TGraph* grZ0 = cc->makeUpsampledCoherentlySummedWaveform(pol,
+								     eventSummary->peak[pol][pointInd].phi,
+								     eventSummary->peak[pol][pointInd].theta,
+								     coherentDeltaPhi,
+								     eventSummary->peak[pol][pointInd].snr);
 
-	  pointInd++;
+	    TGraph* grZ0Hilbert = FFTtools::getHilbertEnvelope(grZ0);
+
+	    RootTools::getMaxMin(grZ0Hilbert, eventSummary->coherent[pol][pointInd].peakHilbert, minY);
+
+	    delete grZ0;
+	    delete grZ0Hilbert;
+
+	    pointInd++;
+	  }
 	}
-	for(Int_t peakInd=0; peakInd < myNumPeaksFine; peakInd++){      
-	  cc->getFinePeakInfo(pol, peakInd, 
-			      eventSummary->peak[pol][pointInd].value,
-			      eventSummary->peak[pol][pointInd].phi,
-			      eventSummary->peak[pol][pointInd].theta);
-
-	  TGraph* grZ0 = cc->makeUpsampledCoherentlySummedWaveform(pol,
-								   eventSummary->peak[pol][pointInd].phi,
-								   eventSummary->peak[pol][pointInd].theta,
-								   coherentDeltaPhi,
-								   eventSummary->peak[pol][pointInd].snr);
-
-	  TGraph* grZ0Hilbert = FFTtools::getHilbertEnvelope(grZ0);
-
-	  RootTools::getMaxMin(grZ0Hilbert, eventSummary->coherent[pol][pointInd].peakHilbert, minY);
-
-	  delete grZ0;
-	  delete grZ0Hilbert;
-
-	  pointInd++;
-	}
-      }
-      // Flags
+	// Flags
         
-      eventSummary->flags.isGood = 1;
+	eventSummary->flags.isGood = 1;
     
-      eventSummary->flags.isPayloadBlast = 0; //!< To be determined.
-      eventSummary->flags.nadirFlag = 0; //!< Not sure I will use this.
-      eventSummary->flags.strongCWFlag = 0; //!< Not sure I will use this.
-      eventSummary->flags.isVarner = 0; //!< Not sure I will use this.
-      eventSummary->flags.isVarner2 = 0; //!< Not sure I will use this.
-      eventSummary->flags.pulser = AnitaEventSummary::EventFlags::NONE; //!< Not yet.
+	eventSummary->flags.isPayloadBlast = 0; //!< To be determined.
+	eventSummary->flags.nadirFlag = 0; //!< Not sure I will use this.
+	eventSummary->flags.strongCWFlag = 0; //!< Not sure I will use this.
+	eventSummary->flags.isVarner = 0; //!< Not sure I will use this.
+	eventSummary->flags.isVarner2 = 0; //!< Not sure I will use this.
+	eventSummary->flags.pulser = AnitaEventSummary::EventFlags::NONE; //!< Not yet.
 
-      delete usefulEvent;
+	delete usefulEvent;
 
-      eventSummaryTree->Fill();
-      delete eventSummary;
+	eventSummaryTree->Fill();
+	delete eventSummary;
+      }
     }
     p.inc(entry, nEntries);
   }

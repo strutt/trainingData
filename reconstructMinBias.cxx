@@ -100,8 +100,8 @@ int main(int argc, char *argv[]){
   cc->addNotch(notch370);
 
 
-  const Int_t myNumPeaksCoarse = 2;
-  const Int_t myNumPeaksFine = 2;
+  const Int_t myNumPeaksCoarse = 1;
+  const Int_t myNumPeaksFine = 1;
     
   TNamed* comments = new TNamed("comments", "Applied simple, static notch at 260#pm26 MHz and 370#pm26");
   comments->Write();
