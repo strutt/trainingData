@@ -94,18 +94,22 @@ int main(int argc, char *argv[]){
     return 1;
   }
 
-  // CrossCorrelator::SimpleNotch notch260("n260Notch", "260MHz Satellite Everything Below",
-  // 					0-26, 260+26);
   CrossCorrelator::SimpleNotch notch260("n260Notch", "260MHz Satellite And 200MHz Notch Notch",
   					260-26, 260+26);
   CrossCorrelator::SimpleNotch notch370("n370Notch", "370MHz Satellite Notch",
 					370-26, 370+26);
-  CrossCorrelator::SimpleNotch notch762("n762Notch", "762MHz Satellite Notch (three bins wide)",
-					762-12, 762+12);  
+  CrossCorrelator::SimpleNotch notch762("n762Notch", "762MHz Satellite Notch (one bin wide)",
+					762-8, 762+8);
+  CrossCorrelator::SimpleNotch notch200("n200Notch", "200 MHz high pass band",
+					0, 200);
+  CrossCorrelator::SimpleNotch notch1200("n1200Notch", "1200 MHz low pass band",
+					0, 1200);
+  
   cc->addNotch(notch260);
   cc->addNotch(notch370);
-  cc->addNotch(notch762);  
-
+  cc->addNotch(notch762);
+  cc->addNotch(notch200);
+  cc->addNotch(notch1200);
 
   const Int_t myNumPeaksCoarse = 1;
   const Int_t myNumPeaksFine = 1;
@@ -143,7 +147,6 @@ int main(int argc, char *argv[]){
       calEventChain->GetEntry(entry);
       // gpsChain->GetEntryWithIndex(header->eventNumber);
       // calEventChain->GetEntryWithIndex(header->eventNumber);
-      
 
       UsefulAnitaEvent* usefulEvent = new UsefulAnitaEvent(calEvent);
 
@@ -175,11 +178,11 @@ int main(int argc, char *argv[]){
 							       eventSummary->peak[pol][pointInd].theta,
 							       coherentDeltaPhi,
 							       eventSummary->peak[pol][pointInd].snr);
-	
+
 	  TGraph* grGlobal0Hilbert = FFTtools::getHilbertEnvelope(grGlobal0);
-      
+
 	  RootTools::getMaxMin(grGlobal0Hilbert, eventSummary->coherent[pol][peakInd].peakHilbert, minY);
-      
+
 	  delete grGlobal0;
 	  delete grGlobal0Hilbert;
 
