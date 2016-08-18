@@ -103,7 +103,7 @@ int main(int argc, char *argv[]){
   CrossCorrelator::SimpleNotch notch200("n200Notch", "200 MHz high pass band",
 					0, 200);
   CrossCorrelator::SimpleNotch notch1200("n1200Notch", "1200 MHz low pass band",
-					0, 1200);
+					 1200, 9999);
   
   cc->addNotch(notch260);
   cc->addNotch(notch370);
