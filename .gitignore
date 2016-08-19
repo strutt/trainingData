@@ -21,3 +21,18 @@ CMakeFiles/
 *.sh
 *.cmake
 *.json
+cat *.s
+
+definingThermalCut/defineThermalCut
+definingThermalCut/plotDefineThermalCut
+examineCoherentlySummedWaveforms
+makeDecimatedDataQualityTrees
+makeWaisDataQualityTrees
+plotReconstructedDecimated
+plotReconstructedMinBias
+plotReconstructedWais
+reconstructDecimated
+reconstructMinBias
+reconstructPeaks
+templateSelfTriggeredBlast
+waisDistributions
