@@ -50,7 +50,6 @@ int main(int argc, char *argv[]){
   TChain* indexedHeadChain = new TChain("headTree");
   TChain* gpsChain = new TChain("adu5PatTree");
   TChain* calEventChain = new TChain("eventTree");
-
   
   for(Int_t run=firstRun; run<=lastRun; run++){
     // TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/headFile%d.root", run, run);
@@ -103,6 +102,8 @@ int main(int argc, char *argv[]){
   					260-26, 260+26);
   CrossCorrelator::SimpleNotch notch370("n370Notch", "370MHz Satellite Notch",
 					370-26, 370+26);
+  CrossCorrelator::SimpleNotch notch400("n400Notch", "400 MHz Satellite Notch",
+					 400-10, 410);  
   CrossCorrelator::SimpleNotch notch762("n762Notch", "762MHz Satellite Notch (one bin wide)",
 					762-8, 762+8);
   CrossCorrelator::SimpleNotch notch200("n200Notch", "200 MHz high pass band",
@@ -112,6 +113,7 @@ int main(int argc, char *argv[]){
   
   cc->addNotch(notch260);
   cc->addNotch(notch370);
+  cc->addNotch(notch400);  
   cc->addNotch(notch762);
   cc->addNotch(notch200);
   cc->addNotch(notch1200);

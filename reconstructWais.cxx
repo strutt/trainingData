@@ -100,15 +100,18 @@ int main(int argc, char *argv[]){
   					260-26, 260+26);
   CrossCorrelator::SimpleNotch notch370("n370Notch", "370MHz Satellite Notch",
 					370-26, 370+26);
+  CrossCorrelator::SimpleNotch notch400("n400Notch", "400 MHz Satellite Notch",
+					400-10, 410);
   CrossCorrelator::SimpleNotch notch762("n762Notch", "762MHz Satellite Notch (one bin wide)",
 					762-8, 762+8);
   CrossCorrelator::SimpleNotch notch200("n200Notch", "200 MHz high pass band",
 					0, 200);
   CrossCorrelator::SimpleNotch notch1200("n1200Notch", "1200 MHz low pass band",
-					1200, 9999);
+					 1200, 9999);
   
   cc->addNotch(notch260);
   cc->addNotch(notch370);
+  cc->addNotch(notch400);  
   cc->addNotch(notch762);
   cc->addNotch(notch200);
   cc->addNotch(notch1200);
