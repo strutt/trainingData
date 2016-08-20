@@ -41,6 +41,9 @@ int main(int argc, char *argv[])
     std::cerr << "Usage 2: " << argv[0] << " [firstRun] [lastRun]" << std::endl;
     return 1;
   }
+
+  const double cutHilbert = 100; //50;
+  const double cutImage = 0.1; //0.06;  
   
   std::cout << argv[0] << "\t" << argv[1];
   if(argc==3){std::cout << "\t" << argv[2];}
@@ -67,7 +70,11 @@ int main(int argc, char *argv[])
     fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/gpsEvent%d.root", run, run);
     gpsChain->Add(fileName);
 
-    fileName = TString::Format("filter260and370/reconstructMinBiasPlots_%d_*.root", run);
+    fileName = TString::Format("filter260and370and762_1bin_anitaBandPassed/reconstructMinBiasPlots_%d_*.root", run);
+    // fileName = TString::Format("filter260and370/reconstructMinBiasPlots_%d_*.root", run);    
+    // fileName = TString::Format("filter260and370and762/reconstructMinBiasPlots_%d_*.root", run);
+    // fileName = TString::Format("filter260and370and762_3bins/reconstructMinBiasPlots_%d_*.root", run);  
+    // fileName = TString::Format("reconstructMinBiasPlots_%d_*.root", run);    
     eventSummaryChain->Add(fileName);
   }
 
@@ -318,7 +325,7 @@ int main(int argc, char *argv[])
   TH2D* hDeltaSolarPhiDegZoomVsTheta[NUM_POL];
   TH2D* hDeltaSolarPhiDegZoomVsPhi[NUM_POL];
   TH2D* hDeltaSolarPhiDegZoomVsTimeOfDay[NUM_POL];
-  TH2D* hImagePeakSolarTheta[NUM_POL];
+  // TH2D* hImagePeakSolarTheta[NUM_POL];
   
   for(int pol=0; pol<NUM_POL; pol++){
     TString name = pol==AnitaPol::kHorizontal ? "hDeltaSolarPhiDegHPol" : "hDeltaSolarPhiDegVPol";
@@ -456,6 +463,10 @@ int main(int argc, char *argv[])
 	Double_t recoPhiDeg = eventSummary->peak[polInd][1].phi;
 	Double_t recoPhiDeg0 = eventSummary->peak[polInd][0].phi;
 
+	if(imagePeak < cutImage && hilbertPeak < cutHilbert){
+	  continue;
+	}
+
 	if(recoPhiDeg < 0) recoPhiDeg += 360;
 	else if(recoPhiDeg >= 360) recoPhiDeg -= 360;
 
@@ -488,8 +499,6 @@ int main(int argc, char *argv[])
 
 
 
-	/// pick event numbers
-	
 	if(TMath::Abs(directionWrtNorth) > maxDirWrtNorth){
 	  std::cerr << recoPhiDeg << "\t" << pat->heading << std::endl;
 	}
@@ -511,43 +520,64 @@ int main(int argc, char *argv[])
 	  hDeltaSolarPhiDegZoomVsPhi[polInd]->Fill(solarPhiDeg, deltaSolarPhiDeg);
 	  hDeltaSolarPhiDegZoomVsTimeOfDay[polInd]->Fill(pat->timeOfDay/1000, deltaSolarPhiDeg);
 	}
+	// {
 	else{
+	//   // // pick event numbers
+	//   const double deltaX = 1420050000-1419789000;
+	//   const double deltaY = 53;
+	//   const Double_t timeAtZeroHeading = 1420050000; //ish
+	//   const Double_t timeAtHeadingEqMinus53 = 1419789000; //ish
+	//   const Double_t theY = (header->realTime - timeAtZeroHeading)*deltaY/deltaX;	  
+	  
+	//   if(header->realTime >= timeAtHeadingEqMinus53 && header->realTime < timeAtHeadingEqMinus53 + 2*deltaX){
+	//     if(TMath::Abs(RootTools::getDeltaAngleDeg(directionWrtNorth, theY)) < 10){
+	//       // yes
+	    
+	  //     std::cout << header->eventNumber << "\t" << eventSummary->eventNumber << "\t" << header->run << std::endl;
+	  {
+	    {
 
-	  double deltaPhiCoarseZoom = RootTools::getDeltaAngleDeg(recoPhiDeg0, recoPhiDeg);
+	      double deltaPhiCoarseZoom = RootTools::getDeltaAngleDeg(recoPhiDeg0, recoPhiDeg);
 
-	  // event info (peak direction, and value)
-	  hPeakHeading[polInd]->Fill(header->realTime,
-				     directionWrtNorth);
-	  hPeakElevation[polInd]->Fill(header->realTime,
-				       recoThetaDeg);
-	  pPeakHeading[polInd]->Fill(header->realTime,
-				     directionWrtNorth,
-				     imagePeak);
-	  pPeakElevation[polInd]->Fill(header->realTime,
-				       recoThetaDeg,
-				       imagePeak);
+	      // event info (peak direction, and value)
+	      hPeakHeading[polInd]->Fill(header->realTime,
+					 directionWrtNorth);
+	      hPeakElevation[polInd]->Fill(header->realTime,
+					   recoThetaDeg);
+	      pPeakHeading[polInd]->Fill(header->realTime,
+					 directionWrtNorth,
+					 imagePeak);
+	      pPeakElevation[polInd]->Fill(header->realTime,
+					   recoThetaDeg,
+					   imagePeak);
 
-	  hImagePeakHilbertPeak[polInd]->Fill(imagePeak,
-					      hilbertPeak);
+	      hImagePeakHilbertPeak[polInd]->Fill(imagePeak,
+						  hilbertPeak);
 
-	  hImagePeakTime[polInd]->Fill(header->realTime,
-				       imagePeak);
-	  hHilbertPeakTime[polInd]->Fill(header->realTime,
-					 hilbertPeak);
+	      hImagePeakTime[polInd]->Fill(header->realTime,
+					   imagePeak);
+	      hHilbertPeakTime[polInd]->Fill(header->realTime,
+					     hilbertPeak);
 	
 
-	  // reconstruction data quality
-	  hImagePeakPhi[polInd]->Fill(recoPhiDeg, imagePeak);
-	  hImagePeakPhi0[polInd]->Fill(recoPhiDeg0,
-				       eventSummary->peak[polInd][0].value);
-	  hImagePeakDeltaPhi[polInd]->Fill(deltaPhiCoarseZoom,
-					   imagePeak);	
-	  hPhi0DeltaPhi[polInd]->Fill(recoPhiDeg0, deltaPhiCoarseZoom);	
-	  if(deltaPhiCoarseZoom > -4.94 && deltaPhiCoarseZoom < 4.99){
-	    hPhi0DeltaPhi2[polInd]->Fill(recoPhiDeg0, deltaPhiCoarseZoom);
+	      // reconstruction data quality
+	      hImagePeakPhi[polInd]->Fill(recoPhiDeg, imagePeak);
+	      hImagePeakPhi0[polInd]->Fill(recoPhiDeg0,
+					   eventSummary->peak[polInd][0].value);
+	      hImagePeakDeltaPhi[polInd]->Fill(deltaPhiCoarseZoom,
+					       imagePeak);	
+	      hPhi0DeltaPhi[polInd]->Fill(recoPhiDeg0, deltaPhiCoarseZoom);	
+	      if(deltaPhiCoarseZoom > -4.94 && deltaPhiCoarseZoom < 4.99){
+		hPhi0DeltaPhi2[polInd]->Fill(recoPhiDeg0, deltaPhiCoarseZoom);
+	      }
+	      hPhi0Theta0[polInd]->Fill(recoPhiDeg0,
+					recoThetaDeg0+0.0001);
+
+	    }
 	  }
-	  hPhi0Theta0[polInd]->Fill(recoPhiDeg0,
-				    recoThetaDeg0+0.0001);
+	
+	
+	  
 
 	}
       }

@@ -21,27 +21,27 @@ int main(int argc, char *argv[]){
   }
   
   TMVA::Factory* factory = new TMVA::Factory("discriminationTraining", outFile, "");
-  TChain* waisChain = new TChain("eventSummaryTree");
-  waisChain->Add("../waisDistributionsPlots/*.root");
-  TChain* minBiasChain = new TChain("eventSummaryTree");
-  minBiasChain->Add("quietHPolEventFile.root");
+  TChain* signalChain = new TChain("signalTree");
+  signalChain->Add("makeSignalTreePlots_*.root");
+  TChain* backgroundChain = new TChain("thermalTree");
+  backgroundChain->Add("makeThermalBackgroundTreePlots_*.root");
   
   // get the TTree objects from the input file
 
-  // int nSig = waisChain->GetEntries();
-  // int nBkg = minBiasChain->GetEntries();
+  // int nSig = signalChain->GetEntries();
+  // int nBkg = backgroundChain->GetEntries();
 
   // global event weights (see below for setting event-wise weights)
 
   double sigWeight = 1.0;
   double bkgWeight = 1.0;
-  factory->SetInputTrees(waisChain, minBiasChain, sigWeight, bkgWeight);
-   
+  factory->SetInputTrees(signalChain, backgroundChain, sigWeight, bkgWeight);
+
   // Define the input variables that shall be used for the MVA training
   // (the variables used in the expression must exist in the original TTree).
 
-  factory->AddVariable("peak[0][1].value", 'D');
-  factory->AddVariable("coherent[0][1].peakHilbert", 'D');
+  factory->AddVariable("imagePeak", 'D');
+  factory->AddVariable("hilbertPeak", 'D');
   // factory->AddVariable("z", 'F');
 
   // Apply additional cuts on the signal and background sample.

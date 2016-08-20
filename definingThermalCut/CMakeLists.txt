@@ -46,7 +46,7 @@ endif()
 
 
 
-find_package(ROOT REQUIRED COMPONENTS MathMore MathCore RIO Hist Tree Net Minuit Minuit2 TreePlayer)
+find_package(ROOT REQUIRED COMPONENTS MathMore MathCore RIO Hist Tree Net Minuit Minuit2 TreePlayer TMVA)
 #find_package(FFTW REQUIRED)
 message("ROOT_INCLUDE_DIRS is set to ${ROOT_INCLUDE_DIRS}")
 
@@ -56,8 +56,7 @@ link_directories(${UTIL_LIB_DIR})
 
 set(ANITA_LIBS AnitaEvent AnitaAnalysis AnitaAnalysisTools AnitaCorrelator RootFftwWrapper)
 
-# removed powerSpectra imagePeakHilbertPeak getWaisHeadings plotInitialDistributions project plotMinBiasDistributions makeDataQualityTrees makeMinBiasDataQualityTrees plotDataQuality templateSelfTriggeredBlast generateAngularResolutionTree reconstructPeaks waisDistributions)
-set(BINARIES reconstructDecimated reconstructMinBias reconstructWais plotReconstructedWais plotReconstructedMinBias plotReconstructedDecimated makeIndexedHeaderTrees examineCoherentlySummedWaveforms makeDecimatedDataQualityTrees makeWaisDataQualityTrees makeMinBiasDataQualityTrees makeThermalBackgroundTree makeSignalTree)
+set(BINARIES defineThermalCut)
 
 FOREACH(binary ${BINARIES})
   MESSAGE(STATUS "Process file: ${binary}")

@@ -1,5 +1,5 @@
 #include "OutputConvention.h"
-#include "RootTools.h"
+// #include "RootTools.h"
 
 TH1D* getThePeakYVals(TH2D* h2){
 
@@ -84,9 +84,18 @@ double findCutVal(TH1D* h){
 
 void plotDiscriminatingVariablesVsTime(){
   
-  const int numFiles = 1;  
-  // TString fileNames[numFiles] = {"plotReconstructedDecimatedPlots_130*.root"};
-  TString fileNames[numFiles] = {"plotReconstructedMinBiasPlots_130*08-16_11-03-11.root"};  
+  const int numFiles = 1;
+  TString fileNames[numFiles] = {"plotReconstructedDecimatedPlots_352_2016-08-19_16-57-43.root"};
+
+  // TString fileNames[numFiles] = {"plotReconstructedDecimatedPlots_130_434_2016-08-19_13-38-17.root"};
+  // TString fileNames[numFiles] = {"plotReconstructedDecimatedPlots_130_434_2016-08-19_13-55-04.root"};
+  // TString fileNames[numFiles] = {"plotReconstructedDecimatedPlots_130_434_2016-08-17_16-23-51.root"};
+
+  // // this one for first pass through two notches
+  // TString fileNames[numFiles] = {"plotReconstructedMinBiasPlots_130*08-16_11-03-11.root"};
+
+  // TString fileNames[numFiles] = {"plotReconstructedMinBiasPlots_130_434_2016-08-17_15-05-33.root"}; //plotReconstructedMinBiasPlots_130_434_2016-08-17_14-54-48.root"};
+
   // const int numFiles = 2;
   // TString fileNames[numFiles] = {"plotReconstructedMinBiasPlots_352_*.root",
   // 				 "plotReconstructedMinBiasPlots_130_439_2016-08-16_11-03*.root"};
@@ -95,7 +104,8 @@ void plotDiscriminatingVariablesVsTime(){
   // TString fileNames[numFiles] = {"plotReconstructedMinBiasPlots_130*.root",
   // 				 "plotReconstructedDecimatedPlots_130*.root",
   // 				 "plotReconstructedWaisPlots_130*.root"};
-  
+
+  const int theLogz = 0;
   for(int fileInd=0; fileInd < numFiles; fileInd++){
     TFile* f = OutputConvention::getFile(fileNames[fileInd]);
 
@@ -110,7 +120,7 @@ void plotDiscriminatingVariablesVsTime(){
     }
     h1->GetXaxis()->SetTimeDisplay(1);    
     h1->Draw("colz");
-    c1->SetLogz(1);
+    c1->SetLogz(theLogz);
 
     auto c2 = new TCanvas();    
     TH2D* h2 = (TH2D*) f->Get("hImagePeakTime_VPol");
@@ -119,7 +129,7 @@ void plotDiscriminatingVariablesVsTime(){
     }
     h2->Draw("colz");
     h2->GetXaxis()->SetTimeDisplay(1);
-    c2->SetLogz(1);
+    c2->SetLogz(theLogz);
 
 
     const double maxHilbert = 512;
@@ -131,7 +141,7 @@ void plotDiscriminatingVariablesVsTime(){
     h3->GetXaxis()->SetTimeDisplay(1);
     h3->GetYaxis()->SetRangeUser(0, maxHilbert);
     h3->Draw("colz");
-    c3->SetLogz(1);
+    c3->SetLogz(theLogz);
     
     auto c4 = new TCanvas();    
     TH2D* h4 = (TH2D*) f->Get("hHilbertPeakTime_VPol");
@@ -141,7 +151,7 @@ void plotDiscriminatingVariablesVsTime(){
     h4->GetXaxis()->SetTimeDisplay(1);
     h4->GetYaxis()->SetRangeUser(0, maxHilbert);
     h4->Draw("colz");
-    c4->SetLogz(1);
+    c4->SetLogz(theLogz);
 
 
 
@@ -184,8 +194,8 @@ void plotDiscriminatingVariablesVsTime(){
     // double cutVal3 = findCutVal(h3y);
     // double cutVal4 = findCutVal(h4y);
 
-    std::cout << cutVal1 << "\t" << cutVal2 << std::endl;
-    std::cout << cutVal3 << "\t" << cutVal4 << std::endl;
+    // std::cout << cutVal1 << "\t" << cutVal2 << std::endl;
+    // std::cout << cutVal3 << "\t" << cutVal4 << std::endl;
 
 
     
@@ -225,10 +235,62 @@ void plotDiscriminatingVariablesVsTime(){
 
 
     
+    auto c5 = new TCanvas();
+    auto h5 = (TH2D*) f->Get("hPeakHeadingHPol");
+    h5->SetTitle("Peak Heading vs. Time HPol; Time; Peak Elevation (Degrees); Events per bin");
+    h5->Draw("colz");
+    c5->SetLogz(theLogz);
+    h5->GetXaxis()->SetTimeDisplay(1);
 
 
 
+    auto c6 = new TCanvas();
+    auto h6 = (TH2D*) f->Get("hPeakHeadingVPol");
+    h6->SetTitle("Peak Heading vs. Time VPol; Time; Peak Heading (Degrees); Events per bin");    
+    h6->Draw("colz");
+    c6->SetLogz(theLogz);
+    h6->GetXaxis()->SetTimeDisplay(1);
+
+
+    auto c7 = new TCanvas();
+    auto h7 = (TH2D*) f->Get("hPeakElevationHPol");
+    h7->Draw("colz");
+    h7->SetTitle("Peak Elevation vs. Time HPol; Time; Peak Elevation (Degrees); Events per bin");
+    c7->SetLogz(theLogz);
+    h7->GetXaxis()->SetTimeDisplay(1);
+    
+
+
+    auto c8 = new TCanvas();
+    auto h8 = (TH2D*) f->Get("hPeakElevationVPol");
+    h8->Draw("colz");
+    h8->SetTitle("Peak Elevation vs. Time VPol; Time; Peak Elevation (Degrees); Events per bin");
+    c8->SetLogz(theLogz);
+    h8->GetXaxis()->SetTimeDisplay(1);
+
+
+
+    auto c5x = new TCanvas();
+    c5x->SetLogy(1);
+    auto h5x = h5->ProjectionX();    
+
+    // auto c6x = new TCanvas();
+    auto h6x = h6->ProjectionX();    
+
+    h5x->Rebin(4);
+    h6x->Rebin(4);    
+    
+    h5x->SetLineColor(kRed);
+    h6x->SetLineColor(kBlue);
+    h5x->Draw();
+    h6x->Draw("same");
+    auto l5x = new TLegend(0.8, 0.8, 1, 1);
+    l5x->AddEntry(h6x, "VPol", "l");
+    l5x->AddEntry(h5x, "HPol", "l");
+    l5x->Draw();
+    
   }
+  
 
   return;
 }

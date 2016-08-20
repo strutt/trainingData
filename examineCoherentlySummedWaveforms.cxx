@@ -86,7 +86,8 @@ int main(int argc, char *argv[])
     fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/calEventFile%d.root", run, run);
     eventChain->Add(fileName);    
 
-    fileName = TString::Format("filter260and370/reconstructMinBiasPlots_%d_*.root", run);
+    // fileName = TString::Format("filter260and370and762_3bins/reconstructMinBiasPlots_%d_*.root", run);
+    fileName = TString::Format("filter260and370/reconstructDecimatedPlots_%d_*.root", run);    
     eventSummaryChain->Add(fileName);
   }
 
@@ -117,8 +118,13 @@ int main(int argc, char *argv[])
 					260-26, 260+26);
   CrossCorrelator::SimpleNotch notch370("n370Notch", "370MHz Satellite Notch",
 					370-26, 370+26);
+  CrossCorrelator::SimpleNotch notch762("n762Notch", "762MHz Satellite Notch (three bins wide)",
+					762-12, 762+12);  
+
+  
   cc->addNotch(notch260);
   cc->addNotch(notch370);
+  cc->addNotch(notch762);  
 
   OutputConvention oc(argc, argv);
   TString outFileName = oc.getOutputFileName();
