@@ -116,8 +116,10 @@ int main(int argc, char *argv[]){
   cc->addNotch(notch200);
   cc->addNotch(notch1200);
 
-  const Int_t myNumPeaksCoarse = 1;
-  const Int_t myNumPeaksFine = 1;
+  const Int_t myNumPeaksCoarse = 3;
+  const Int_t myNumPeaksFine = 3;
+  const Int_t coherentDeltaPhi = 0;	    
+  
     
   TNamed* comments = new TNamed("comments", "Applied simple, static notch at 260#pm26 MHz and 370#pm26 and 762#pm8MHz");
   comments->Write();
@@ -158,65 +160,65 @@ int main(int argc, char *argv[]){
 	calEventChain->GetEntryWithIndex(header->eventNumber);
 
 	UsefulAnitaEvent* usefulEvent = new UsefulAnitaEvent(calEvent);
-    
-      
-	// cc->correlateEvent(usefulEvent);
 
-	cc->reconstructEvent(usefulEvent, myNumPeaksCoarse, myNumPeaksFine);
+
+	// cc->reconstructEvent(usefulEvent, myNumPeaksCoarse, myNumPeaksFine);
+	AnitaPol::AnitaPol_t peakPol = cc->reconstructEventPeakPol(usefulEvent, myNumPeaksCoarse, myNumPeaksFine);
     
 	eventSummary = new AnitaEventSummary(header, &usefulPat);
 	// std::cout << eventSummary->sun.theta << "\t" << eventSummary->sun.phi << std::endl;
 
-	const Int_t coherentDeltaPhi = 0;
 	Double_t minY = 0;
+
+
 	for(Int_t polInd=0; polInd < AnitaPol::kNotAPol; polInd++){
+	
 	  AnitaPol::AnitaPol_t pol = (AnitaPol::AnitaPol_t) polInd;
 
-	  Int_t pointInd=0;
-	  for(Int_t peakInd=0; peakInd < myNumPeaksCoarse; peakInd++){
+	  if(pol!=peakPol){
+	    for(Int_t peakInd=0; peakInd < myNumPeaksCoarse; peakInd++){
 	
 
-	    cc->getCoarsePeakInfo(pol, peakInd,
-				  eventSummary->peak[pol][pointInd].value,
-				  eventSummary->peak[pol][pointInd].phi,
-				  eventSummary->peak[pol][pointInd].theta);
+	      cc->getCoarsePeakInfo(pol, peakInd,
+				    eventSummary->peak[pol][peakInd].value,
+				    eventSummary->peak[pol][peakInd].phi,
+				    eventSummary->peak[pol][peakInd].theta);
 
+	      TGraph* grGlobal0 = cc->makeCoherentlySummedWaveform(pol,
+								   eventSummary->peak[pol][peakInd].phi,
+								   eventSummary->peak[pol][peakInd].theta,
+								   coherentDeltaPhi,
+								   eventSummary->peak[pol][peakInd].snr);
 	
-	    TGraph* grGlobal0 = cc->makeCoherentlySummedWaveform(pol,
-								 eventSummary->peak[pol][pointInd].phi,
-								 eventSummary->peak[pol][pointInd].theta,
-								 coherentDeltaPhi,
-								 eventSummary->peak[pol][pointInd].snr);
-	
-	    TGraph* grGlobal0Hilbert = FFTtools::getHilbertEnvelope(grGlobal0);
+	      TGraph* grGlobal0Hilbert = FFTtools::getHilbertEnvelope(grGlobal0);
       
-	    RootTools::getMaxMin(grGlobal0Hilbert, eventSummary->coherent[pol][peakInd].peakHilbert, minY);
+	      RootTools::getMaxMin(grGlobal0Hilbert, eventSummary->coherent[pol][peakInd].peakHilbert, minY);
       
-	    delete grGlobal0;
-	    delete grGlobal0Hilbert;
-
-	    pointInd++;
+	      delete grGlobal0;
+	      delete grGlobal0Hilbert;
+	    }
 	  }
-	  for(Int_t peakInd=0; peakInd < myNumPeaksFine; peakInd++){      
-	    cc->getFinePeakInfo(pol, peakInd, 
-				eventSummary->peak[pol][pointInd].value,
-				eventSummary->peak[pol][pointInd].phi,
-				eventSummary->peak[pol][pointInd].theta);
+	  else{	
+	    for(Int_t peakInd=0; peakInd < myNumPeaksFine; peakInd++){      
+	      cc->getFinePeakInfo(pol, peakInd, 
+				  eventSummary->peak[pol][peakInd].value,
+				  eventSummary->peak[pol][peakInd].phi,
+				  eventSummary->peak[pol][peakInd].theta);
 
-	    TGraph* grZ0 = cc->makeUpsampledCoherentlySummedWaveform(pol,
-								     eventSummary->peak[pol][pointInd].phi,
-								     eventSummary->peak[pol][pointInd].theta,
-								     coherentDeltaPhi,
-								     eventSummary->peak[pol][pointInd].snr);
+	      TGraph* grZ0 = cc->makeUpsampledCoherentlySummedWaveform(pol,
+								       eventSummary->peak[pol][peakInd].phi,
+								       eventSummary->peak[pol][peakInd].theta,
+								      
+								       coherentDeltaPhi,
+								       eventSummary->peak[pol][peakInd].snr);
 
-	    TGraph* grZ0Hilbert = FFTtools::getHilbertEnvelope(grZ0);
+	      TGraph* grZ0Hilbert = FFTtools::getHilbertEnvelope(grZ0);
 
-	    RootTools::getMaxMin(grZ0Hilbert, eventSummary->coherent[pol][pointInd].peakHilbert, minY);
+	      RootTools::getMaxMin(grZ0Hilbert, eventSummary->coherent[pol][peakInd].peakHilbert, minY);
 
-	    delete grZ0;
-	    delete grZ0Hilbert;
-
-	    pointInd++;
+	      delete grZ0;
+	      delete grZ0Hilbert;
+	    }
 	  }
 	}
 	// Flags
