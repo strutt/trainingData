@@ -116,8 +116,8 @@ int main(int argc, char *argv[]){
 
   // const Int_t myNumPeaksCoarse = 1;
   // const Int_t myNumPeaksFine = 1;
-  const Int_t myNumPeaksCoarse = 3;
-  const Int_t myNumPeaksFine = 3;
+  const Int_t myNumPeaksCoarse = 5;
+  const Int_t myNumPeaksFine = 5;
   const Int_t coherentDeltaPhi = 0;
 
   TNamed* comments = new TNamed("comments", "Applied simple, static notch at 260#pm26 MHz and 370#pm26 and 762#pm12MHz");

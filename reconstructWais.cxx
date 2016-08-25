@@ -116,8 +116,8 @@ int main(int argc, char *argv[]){
   cc->addNotch(notch200);
   cc->addNotch(notch1200);
 
-  const Int_t myNumPeaksCoarse = 3;
-  const Int_t myNumPeaksFine = 3;
+  const Int_t myNumPeaksCoarse = 5;
+  const Int_t myNumPeaksFine = 5;
   const Int_t coherentDeltaPhi = 0;	    
   
     

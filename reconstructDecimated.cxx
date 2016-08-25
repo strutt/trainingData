@@ -118,8 +118,8 @@ int main(int argc, char *argv[]){
   cc->addNotch(notch200);
   cc->addNotch(notch1200);
 
-  const Int_t myNumPeaksCoarse = 3;
-  const Int_t myNumPeaksFine = 3;
+  const Int_t myNumPeaksCoarse = 5;
+  const Int_t myNumPeaksFine = 5;
   const Int_t coherentDeltaPhi = 0;	    
 
   TNamed* comments = new TNamed("comments", "Applied simple, static notch at 260#pm26 MHz, 370#pm26 MHz, 762#pm8 MHz");
@@ -186,13 +186,16 @@ int main(int argc, char *argv[]){
 								 eventSummary->peak[pol][peakInd].theta,
 								 coherentDeltaPhi,
 								 eventSummary->peak[pol][peakInd].snr);
+
+	    if(grGlobal0!=NULL){
 	
-	    TGraph* grGlobal0Hilbert = FFTtools::getHilbertEnvelope(grGlobal0);
+	      TGraph* grGlobal0Hilbert = FFTtools::getHilbertEnvelope(grGlobal0);
       
-	    RootTools::getMaxMin(grGlobal0Hilbert, eventSummary->coherent[pol][peakInd].peakHilbert, minY);
+	      RootTools::getMaxMin(grGlobal0Hilbert, eventSummary->coherent[pol][peakInd].peakHilbert, minY);
       
-	    delete grGlobal0;
-	    delete grGlobal0Hilbert;
+	      delete grGlobal0;
+	      delete grGlobal0Hilbert;
+	    }
 	  }
 	}
 	else{
