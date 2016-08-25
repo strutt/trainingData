@@ -42,6 +42,7 @@ int main(int argc, char *argv[])
     return 1;
   }
 
+  const double ratioCut = 2.8;
   
   std::cout << argv[0] << "\t" << argv[1];
   if(argc==3){std::cout << "\t" << argv[2];}
@@ -60,11 +61,12 @@ int main(int argc, char *argv[])
       continue;
     }
 
-    TString fileName = TString::Format("filter260and370/reconstructWaisPlots_%d_*.root", run);
+    TString fileName = TString::Format("filter260-370-400-762/reconstructWaisPlots_%d_*.root", run);
+    // TString fileName = TString::Format("filter260and370/reconstructWaisPlots_%d_*.root", run);    
     // TString fileName = TString::Format("test400MHzExt/reconstructDecimatedPlots_%d_*.root", run);    
     eventSummaryChain->Add(fileName);
     
-    fileName = TString::Format("testNewDataQuality/makeWaisDataQualityTreesPlots_%d*.root", run);
+    fileName = TString::Format("filter260-370-400-762/makeWaisDataQualityTreesPlots_%d*.root", run);
     dataQualityChain->Add(fileName);
   }
 
@@ -127,7 +129,7 @@ int main(int argc, char *argv[])
 	}
       }
     }
-    if(maxRatio > 3){
+    if(maxRatio > ratioCut){
       p.inc(entry, maxEntry);
       continue;
     }

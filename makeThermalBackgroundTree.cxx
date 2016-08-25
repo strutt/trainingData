@@ -49,10 +49,18 @@ int main(int argc, char *argv[])
   const Int_t firstRun = atoi(argv[1]);
   const Int_t lastRun = argc==3 ? atoi(argv[2]) : firstRun;
 
+  
+  const double ratioCut = 2.8;
 
   const int polInd = AnitaPol::kVertical;
+
+  const int numGoodTimes = 1;
+  UInt_t goodTimesStart[numGoodTimes] = {1419100000};
+  UInt_t goodTimesEnd[numGoodTimes] = {1419500000};
+
   
-  TChain* eventSummaryChain = new TChain("eventSummaryTree");
+  TChain* headChain = new TChain("headTree");
+  TChain* eventSummaryChain = new TChain("eventSummaryTree");  
   TChain* dataQualityChain = new TChain("dataQualityTree");    
 
   for(Int_t run=firstRun; run<=lastRun; run++){
@@ -60,11 +68,17 @@ int main(int argc, char *argv[])
       continue;
     }
 
-    TString fileName = TString::Format("test400MHzExt/reconstructDecimatedPlots_%d_*.root", run);
+    TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/decimatedHeadFile%d.root", run, run);
+    headChain->Add(fileName);
+
+
+    fileName = TString::Format("filter260-370-400-762/reconstructDecimatedPlots_%d_*.root", run);
+    // TString fileName = TString::Format("test400MHzExt/reconstructDecimatedPlots_%d_*.root", run); 
     eventSummaryChain->Add(fileName);
 
     
-    fileName = TString::Format("testNewDataQuality/makeDecimatedDataQualityTreesPlots_%d*.root", run);
+    fileName = TString::Format("filter260-370-400-762/makeDecimatedDataQualityTreesPlots_%d*.root", run);
+    // fileName = TString::Format("testNewDataQuality/makeDecimatedDataQualityTreesPlots_%d*.root", run);    
     dataQualityChain->Add(fileName);
   }
 
@@ -76,7 +90,8 @@ int main(int argc, char *argv[])
     std::cerr << "Unable to find dataQualityFiles files!" << std::endl;
     return 1;
   }
-  
+  RawAnitaHeader* header = NULL;
+  headChain->SetBranchAddress("header", &header);
   Double_t peakToPeak[NUM_POL][NUM_SEAVEYS];
   dataQualityChain->SetBranchAddress("peakToPeak", peakToPeak);
   UInt_t eventNumberDQ;
@@ -91,6 +106,7 @@ int main(int argc, char *argv[])
     std::cerr << "Error! Unable to open output file " << outFileName.Data() << std::endl;
     return 1;
   }
+  
   
   TTree* outTree = new TTree("thermalTree", "HQ Thermal Background Events");
   UInt_t eventNumber;
@@ -108,12 +124,21 @@ int main(int argc, char *argv[])
   ProgressBar p(maxEntry-startEntry);
 
   for(Long64_t entry = startEntry; entry < maxEntry; entry++){
-    eventSummaryChain->GetEntry(entry);
-    dataQualityChain->GetEntry(entry);
+    headChain->GetEntry(entry);
 
-    if(eventSummary->eventNumber != eventNumberDQ){
-      std::cerr << "???" << eventSummary->eventNumber << "\t" << eventNumberDQ << std::endl;
+    bool isGoodTime = false;
+    for(int i=0; i < numGoodTimes; i++){
+      if(header->realTime >= goodTimesStart[i] && header->realTime < goodTimesEnd[i]){
+	isGoodTime = true;
+      }
     }
+    if(isGoodTime==false){
+      p.inc(entry, maxEntry);
+      continue;
+    }
+    
+    
+    dataQualityChain->GetEntry(entry);
     
     Double_t maxRatio = 0;
     for(Int_t polInd=0; polInd < NUM_POL; polInd++){      
@@ -127,10 +152,31 @@ int main(int argc, char *argv[])
 	}
       }
     }
-    if(maxRatio > 3){
+    if(maxRatio > ratioCut){
       p.inc(entry, maxEntry);
       continue;
     }
+
+    eventSummaryChain->GetEntry(entry);
+
+    if(eventSummary->eventNumber != eventNumberDQ){
+      std::cerr << "???" << eventSummary->eventNumber << "\t" << eventNumberDQ << std::endl;
+    }
+    
+    const double deltaSolarPhiDegCut = 10; // degrees    
+    Double_t recoPhiDeg = eventSummary->peak[polInd][1].phi;
+    Double_t solarPhiDeg  = eventSummary->sun.phi;
+    Double_t deltaSolarPhiDeg = RootTools::getDeltaAngleDeg(solarPhiDeg, recoPhiDeg);    
+    Int_t sun = TMath::Abs(deltaSolarPhiDeg) > deltaSolarPhiDegCut ? 0 : 1;
+
+    if(sun==1){
+
+      p.inc(entry, maxEntry);
+      continue;
+    }
+
+    // Double_t deltaSolarThetaDeg = solarThetaDeg - recoThetaDeg;
+
     
     imagePeak = eventSummary->peak[polInd][1].value;
     hilbertPeak = eventSummary->coherent[polInd][1].peakHilbert;
