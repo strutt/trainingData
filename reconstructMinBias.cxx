@@ -99,7 +99,7 @@ int main(int argc, char *argv[]){
   CrossCorrelator::SimpleNotch notch370("n370Notch", "370MHz Satellite Notch",
 					370-26, 370+26);
   CrossCorrelator::SimpleNotch notch400("n400Notch", "400 MHz Satellite Notch",
-					400-10, 410);  
+					400-10, 410);
   CrossCorrelator::SimpleNotch notch762("n762Notch", "762MHz Satellite Notch (one bin wide)",
 					762-8, 762+8);
   CrossCorrelator::SimpleNotch notch200("n200Notch", "200 MHz high pass band",
@@ -109,7 +109,7 @@ int main(int argc, char *argv[]){
   
   cc->addNotch(notch260);
   cc->addNotch(notch370);
-  cc->addNotch(notch400);  
+  cc->addNotch(notch400);
   cc->addNotch(notch762);
   cc->addNotch(notch200);
   cc->addNotch(notch1200);
@@ -118,7 +118,7 @@ int main(int argc, char *argv[]){
   // const Int_t myNumPeaksFine = 1;
   const Int_t myNumPeaksCoarse = 3;
   const Int_t myNumPeaksFine = 3;
-  const Int_t coherentDeltaPhi = 0;	    
+  const Int_t coherentDeltaPhi = 0;
 
   TNamed* comments = new TNamed("comments", "Applied simple, static notch at 260#pm26 MHz and 370#pm26 and 762#pm12MHz");
   comments->Write();
@@ -194,8 +194,8 @@ int main(int argc, char *argv[]){
 	    delete grGlobal0Hilbert;
 	  }
 	}
-	else{	
-	  for(Int_t peakInd=0; peakInd < myNumPeaksFine; peakInd++){      
+	else{
+	  for(Int_t peakInd=0; peakInd < myNumPeaksFine; peakInd++){
 	    cc->getFinePeakInfo(pol, peakInd, 
 				eventSummary->peak[pol][peakInd].value,
 				eventSummary->peak[pol][peakInd].phi,
@@ -204,16 +204,17 @@ int main(int argc, char *argv[]){
 	    TGraph* grZ0 = cc->makeUpsampledCoherentlySummedWaveform(pol,
 								     eventSummary->peak[pol][peakInd].phi,
 								     eventSummary->peak[pol][peakInd].theta,
-								      
 								     coherentDeltaPhi,
 								     eventSummary->peak[pol][peakInd].snr);
+	    
+	    if(grZ0!=NULL){
+	      TGraph* grZ0Hilbert = FFTtools::getHilbertEnvelope(grZ0);
 
-	    TGraph* grZ0Hilbert = FFTtools::getHilbertEnvelope(grZ0);
+	      RootTools::getMaxMin(grZ0Hilbert, eventSummary->coherent[pol][peakInd].peakHilbert, minY);
 
-	    RootTools::getMaxMin(grZ0Hilbert, eventSummary->coherent[pol][peakInd].peakHilbert, minY);
-
-	    delete grZ0;
-	    delete grZ0Hilbert;
+	      delete grZ0;
+	      delete grZ0Hilbert;
+	    }
 	  }
 	}
       }

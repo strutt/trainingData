@@ -198,8 +198,8 @@ int main(int argc, char *argv[]){
 	      delete grGlobal0Hilbert;
 	    }
 	  }
-	  else{	
-	    for(Int_t peakInd=0; peakInd < myNumPeaksFine; peakInd++){      
+	  else{
+	    for(Int_t peakInd=0; peakInd < myNumPeaksFine; peakInd++){
 	      cc->getFinePeakInfo(pol, peakInd, 
 				  eventSummary->peak[pol][peakInd].value,
 				  eventSummary->peak[pol][peakInd].phi,
@@ -208,16 +208,17 @@ int main(int argc, char *argv[]){
 	      TGraph* grZ0 = cc->makeUpsampledCoherentlySummedWaveform(pol,
 								       eventSummary->peak[pol][peakInd].phi,
 								       eventSummary->peak[pol][peakInd].theta,
-								      
 								       coherentDeltaPhi,
 								       eventSummary->peak[pol][peakInd].snr);
+	    
+	      if(grZ0!=NULL){
+		TGraph* grZ0Hilbert = FFTtools::getHilbertEnvelope(grZ0);
 
-	      TGraph* grZ0Hilbert = FFTtools::getHilbertEnvelope(grZ0);
+		RootTools::getMaxMin(grZ0Hilbert, eventSummary->coherent[pol][peakInd].peakHilbert, minY);
 
-	      RootTools::getMaxMin(grZ0Hilbert, eventSummary->coherent[pol][peakInd].peakHilbert, minY);
-
-	      delete grZ0;
-	      delete grZ0Hilbert;
+		delete grZ0;
+		delete grZ0Hilbert;
+	      }
 	    }
 	  }
 	}
