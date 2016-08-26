@@ -350,12 +350,12 @@ int main(int argc, char *argv[])
 	maxRatio = ratio;
       }
     }
-    hMaxBottomToTopPeakToPeakRatio->Fill(maxRatio);
     if(maxRatio > ratioCutHigh || maxRatio < ratioCutLow){
       // std::cerr << eventNumberDQ << "\t" << maxRatio << std::endl;
       p.inc(entry, maxEntry);
       continue;
-    }    
+    }
+    hMaxBottomToTopPeakToPeakRatio->Fill(maxRatio);    
     
     Int_t headEntry = headChain->GetEntryNumberWithIndex(eventSummary->eventNumber, 0);
     if(headEntry < 0){
