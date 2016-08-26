@@ -46,6 +46,7 @@ int main(int argc, char *argv[])
   const Int_t lastRun = firstRun; 
 
   TChain* headChain = new TChain("headTree");
+  TChain* indexedHeadChain = new TChain("headTree");
   TChain* gpsChain = new TChain("adu5PatTree");
   TChain* eventSummaryChain = new TChain("eventSummaryTree");
 
@@ -56,12 +57,17 @@ int main(int argc, char *argv[])
     if(run == 198 || run == 287){
       continue;
     }
-    
-    TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/decimatedHeadFile%d.root", run, run);
+
+    TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/headFile%d.root", run, run);
+    // TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/decimatedHeadFile%d.root", run, run);
     headChain->Add(fileName);
+
+    fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/indexedBlindHeadFile%d.root", run, run);
+    indexedHeadChain->Add(fileName);
+    
     fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/gpsEvent%d.root", run, run);
     gpsChain->Add(fileName);
-    fileName = TString::Format("~/UCL/ANITA/anita3Analysis/trainingData/filter260-370-400-762-speed/reconstructedWaisPlots_%d_*.root", run);
+    fileName = TString::Format("~/UCL/ANITA/anita3Analysis/trainingData/filter260-370-400-762-speed/reconstructWaisPlots_%d_*.root", run);
     eventSummaryChain->Add(fileName);
   }
 
@@ -77,9 +83,10 @@ int main(int argc, char *argv[])
     std::cerr << "Unable to find eventSummary files!" << std::endl;
     return 1;
   }
-  
-  headChain->BuildIndex("eventNumber");
-  gpsChain->BuildIndex("eventNumber");
+
+  indexedHeadChain->BuildIndex("eventNumber");    
+  // headChain->BuildIndex("eventNumber");
+  // gpsChain->BuildIndex("eventNumber");
 
   RawAnitaHeader* header = NULL;
   headChain->SetBranchAddress("header", &header);
@@ -109,8 +116,11 @@ int main(int argc, char *argv[])
 
   for(Long64_t entry = startEntry; entry < maxEntry; entry++){
     eventSummaryChain->GetEntry(entry);
-    headChain->GetEntryWithIndex(eventSummary->eventNumber);
-    gpsChain->GetEntryWithIndex(eventSummary->eventNumber);
+    Int_t entry2 = indexedHeadChain->GetEntryNumberWithIndex(eventSummary->eventNumber);
+    headChain->GetEntry(entry2);
+    gpsChain->GetEntry(entry2);
+    // headChain->GetEntryWithIndex(eventSummary->eventNumber);
+    // gpsChain->GetEntryWithIndex(eventSummary->eventNumber);
 
     UsefulAdu5Pat usefulPat(pat);
 
@@ -123,6 +133,7 @@ int main(int argc, char *argv[])
 
     // assignment constructor works?
     outEventSummary = eventSummary;
+    outEventSummary->realTime = header->realTime;
 
     for(int polInd=0; polInd < AnitaPol::kNotAPol; polInd++){
       for(int peakInd=0; peakInd < AnitaEventSummary::maxDirectionsPerPol; peakInd++){
@@ -130,20 +141,22 @@ int main(int argc, char *argv[])
 	outEventSummary->peak[polInd][peakInd].longitude = -9999;
       }
     }
-    
+
     Double_t recoPhiDeg = eventSummary->peak[pol][goodPeak].phi;
     if(recoPhiDeg < 0) recoPhiDeg += 360;
     if(recoPhiDeg >= 360) recoPhiDeg -= 360;
     Double_t recoThetaDeg = eventSummary->peak[pol][goodPeak].theta;
     Double_t phiWave = recoPhiDeg*TMath::DegToRad();
     Double_t thetaWave = -1*recoThetaDeg*TMath::DegToRad();
-    Double_t sourceLon, sourceLat;
-    int success = usefulPat.getSourceLonAndLatAltZero(phiWave, thetaWave,
-						      sourceLon, sourceLat);
+    Double_t sourceLon, sourceLat, sourceAlt = 0; // altitude zero for now
+    int success = usefulPat.getSourceLonAndLatAtAlt(phiWave, thetaWave,
+						    sourceLon, sourceLat, sourceAlt);
 
     if(success){
       outEventSummary->peak[pol][goodPeak].latitude = sourceLat;
       outEventSummary->peak[pol][goodPeak].longitude = sourceLon;
+      outEventSummary->peak[pol][goodPeak].altitude = sourceAlt;      
+      outEventSummary->peak[pol][goodPeak].distanceToSource = SPEED_OF_LIGHT_NS*usefulPat.getTriggerTimeNsFromSource(sourceLat, sourceLon, sourceAlt);
     }
 
     outTree->Fill();
