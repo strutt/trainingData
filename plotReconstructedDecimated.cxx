@@ -429,6 +429,11 @@ int main(int argc, char *argv[])
 	  }
 	}
       }
+      const int maxAbsDeltaPhiSect = 1;
+      if(TMath::Abs(deltaPhiSect) > maxAbsDeltaPhiSect){
+	p.inc(entry, maxEntry);
+	continue;	
+      }
       hDeltaPhiSect->Fill(deltaPhiSect);
 
 

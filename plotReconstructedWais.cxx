@@ -353,15 +353,13 @@ int main(int argc, char *argv[])
     }
     // if(maxRatio > 3){
     //   std::cerr << maxRatio << "\t" << eventSummary->run << "\t" << eventSummary->eventNumber << std::endl;
-    // }    
+    // }
     if(maxRatio > ratioCutHigh || maxRatio < ratioCutLow){
       // std::cerr << eventNumberDQ << "\t" << maxRatio << std::endl;
       p.inc(entry, maxEntry);
       continue;
     }
     hMaxBottomToTopPeakToPeakRatio->Fill(maxRatio);
-
-
 
 
     
@@ -434,6 +432,11 @@ int main(int argc, char *argv[])
 	    deltaPhiSect = dPhiSect;
 	  }
 	}
+      }
+      const int maxAbsDeltaPhiSect = 1;
+      if(TMath::Abs(deltaPhiSect) > maxAbsDeltaPhiSect){
+	p.inc(entry, maxEntry);
+	continue;	
       }
       hDeltaPhiSect->Fill(deltaPhiSect);
 
