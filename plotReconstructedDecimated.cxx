@@ -50,7 +50,8 @@ int main(int argc, char *argv[])
   const double cutHilbert = 0;
   const double cutImage = 0;
   
-  const double ratioCut = 9999;
+  const double ratioCutHigh = 2.8; //9999;
+  const double ratioCutLow = 1; //9999;
 
   const bool useTimeCut = true; //true; //false;
   const int numGoodTimes = 1;
@@ -359,11 +360,12 @@ int main(int argc, char *argv[])
       }
     }
     hMaxBottomToTopPeakToPeakRatio->Fill(maxRatio);
-    if(maxRatio > ratioCut){
-      // std::cerr << eventNumberDQ << "\t" << maxRatio << std::endl;
+    
+    if(maxRatio > ratioCutHigh || maxRatio < ratioCutLow){
+      std::cerr << eventSummary->run << "\t" << eventNumberDQ << "\t" << maxRatio << std::endl;
       p.inc(entry, maxEntry);
       continue;
-    }    
+    }
 
 
     
