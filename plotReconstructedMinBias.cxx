@@ -47,11 +47,10 @@ int main(int argc, char *argv[])
 
   const double ratioCut = 2.8;  
 
-  const bool useTimeCut = false; //false;
+  const bool useTimeCut = true; //true; //false;
   const int numGoodTimes = 1;
-  UInt_t goodTimesStart[numGoodTimes] = {1419100000};
-  UInt_t goodTimesEnd[numGoodTimes] = {1419500000};
-  
+  UInt_t goodTimesStart[numGoodTimes] = {1419400000}; //{1419100000};
+  UInt_t goodTimesEnd[numGoodTimes] =   {1419600000}; //{1419500000};
   
   
   std::cout << argv[0] << "\t" << argv[1];
@@ -64,7 +63,6 @@ int main(int argc, char *argv[])
   TChain* gpsChain = new TChain("adu5PatTree");
   TChain* eventSummaryChain = new TChain("eventSummaryTree");
   TChain* dataQualityChain = new TChain("dataQualityTree");    
-
 
   const int numRuns = lastRun - firstRun + 1;
   for(Int_t run=firstRun; run<=lastRun; run++){
@@ -79,7 +77,7 @@ int main(int argc, char *argv[])
     fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/gpsEvent%d.root", run, run);
     gpsChain->Add(fileName);
 
-    fileName = TString::Format("filter260-370-400-762/reconstructMinBiasPlots_%d_*.root", run);
+    fileName = TString::Format("filter260-370-400-762-5peaks/reconstructMinBiasPlots_%d_*.root", run);
     // fileName = TString::Format("filter260and370/reconstructMinBiasPlots_%d_*.root", run);    
     // fileName = TString::Format("filter260and370and762/reconstructMinBiasPlots_%d_*.root", run);
     // fileName = TString::Format("filter260and370and762_3bins/reconstructMinBiasPlots_%d_*.root", run);  
@@ -158,6 +156,7 @@ int main(int argc, char *argv[])
   const Double_t maxHilbertPeak = 2048;  
 
   
+  // const int numPeaks = 1;
   const int numPeaks = 5;
   
   TH2D* hPeakHeading = new TH2D("hPeakHeading",
@@ -188,7 +187,7 @@ int main(int argc, char *argv[])
 					    minDirWrtNorth, maxDirWrtNorth);
 
   TProfile2D* pPeakElevation = new TProfile2D("pPeakElevation",
-					      "Profile of Image Peak vs. Peak Elevtaion vs. Time; Time; Peak Elevation (Degrees); Image peak (no units)",
+					      "Profile of Image Peak vs. Peak Elevation vs. Time; Time; Peak Elevation (Degrees); Image peak (no units)",
 					      numTimeBins, firstRealTime, lastRealTime+1,
 					      numBinsTheta, minTheta, maxTheta);
 
@@ -363,10 +362,9 @@ int main(int argc, char *argv[])
 
       gpsChain->GetEntry(headEntry);
 
-
       Double_t solarPhiDeg;
       Double_t solarThetaDeg;
-      
+
       Double_t recoPhiDeg;
       Double_t recoThetaDeg;
       Double_t imagePeak;
@@ -399,26 +397,25 @@ int main(int argc, char *argv[])
 						     imagePeak);
 	
 	if(TMath::Abs(deltaSolarPhiDeg) < deltaSolarPhiDegCut &&
-	   TMath::Abs(deltaSolarThetaDeg) < deltaSolarThetaCut)
-	  {
+	   TMath::Abs(deltaSolarThetaDeg) < deltaSolarThetaCut){
 	  
-	    hDeltaSolarThetaDegVsTheta->Fill(solarThetaDeg, deltaSolarThetaDeg);	  
-	    hDeltaSolarThetaDegVsPhi->Fill(solarPhiDeg, deltaSolarThetaDeg);
-	    hDeltaSolarThetaDegVsTimeOfDay->Fill(pat->timeOfDay/1000, deltaSolarThetaDeg);
-	    hDeltaSolarPhiDegVsTheta->Fill(solarThetaDeg, deltaSolarPhiDeg);
-	    hDeltaSolarPhiDegVsPhi->Fill(solarPhiDeg, deltaSolarPhiDeg);
-	    hDeltaSolarPhiDegVsTimeOfDay->Fill(pat->timeOfDay/1000, deltaSolarPhiDeg);
-
-	    hDeltaSolarPhiDegVsDeltaSolarPhiDeg->Fill(deltaSolarPhiDeg, deltaSolarThetaDeg);
-	    hImagePeakHilbertPeakSunPhiTheta->Fill(imagePeak, hilbertPeak);
+	  hDeltaSolarThetaDegVsTheta->Fill(solarThetaDeg, deltaSolarThetaDeg);
+	  hDeltaSolarThetaDegVsPhi->Fill(solarPhiDeg, deltaSolarThetaDeg);
+	  hDeltaSolarThetaDegVsTimeOfDay->Fill(pat->timeOfDay/1000, deltaSolarThetaDeg);
+	  hDeltaSolarPhiDegVsTheta->Fill(solarThetaDeg, deltaSolarPhiDeg);
+	  hDeltaSolarPhiDegVsPhi->Fill(solarPhiDeg, deltaSolarPhiDeg);
+	  hDeltaSolarPhiDegVsTimeOfDay->Fill(pat->timeOfDay/1000, deltaSolarPhiDeg);
+	  
+	  hDeltaSolarPhiDegVsDeltaSolarPhiDeg->Fill(deltaSolarPhiDeg, deltaSolarThetaDeg);
+	  hImagePeakHilbertPeakSunPhiTheta->Fill(imagePeak, hilbertPeak);
 	}
-	
 	else if(TMath::Abs(deltaSolarPhiDeg) < deltaSolarPhiDegCut){
-	  hImagePeakHilbertPeakSunPhi->Fill(imagePeak, hilbertPeak);	  
+	  hImagePeakHilbertPeakSunPhi->Fill(imagePeak, hilbertPeak);
 	  // points to the sun in phi only
 	}
 	else{
 	  goodPeak = peakInd;
+	  break;
 	}
       }
 

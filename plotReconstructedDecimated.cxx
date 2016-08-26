@@ -41,20 +41,21 @@ int main(int argc, char *argv[])
     std::cerr << "Usage 2: " << argv[0] << " [firstRun] [lastRun]" << std::endl;
     return 1;
   }
+  
+  
+  const double findHilbert = 0; //120; //50;
+  const double findImage = 0.074; //0.1; //0.06;
 
-  
-  
-  // const double cutHilbert = 100; //50;
-  // const double cutImage = 0.1; //0.06;
-  const double cutHilbert = 0; //100; //50;
-  const double cutImage = 0; //0.088; //0; //0.1; //0.06;  
+ // cuts events below these numbers
+  const double cutHilbert = 0;
+  const double cutImage = 0;
   
   const double ratioCut = 2.8;
 
-  const bool useTimeCut = false; //true; //false;
+  const bool useTimeCut = true; //true; //false;
   const int numGoodTimes = 1;
-  UInt_t goodTimesStart[numGoodTimes] = {1419100000};
-  UInt_t goodTimesEnd[numGoodTimes] = {1419500000};
+  UInt_t goodTimesStart[numGoodTimes] = {1419400000}; //{1419100000};
+  UInt_t goodTimesEnd[numGoodTimes] =   {1419600000}; //{1419500000};
   
   
   std::cout << argv[0] << "\t" << argv[1];
@@ -169,7 +170,8 @@ int main(int argc, char *argv[])
   const Double_t maxHilbertPeak = 2048;  
 
   
-  const int numPeaks = 5;
+  // const int numPeaks = 1;
+  const int numPeaks = 5;  
   
   TH2D* hPeakHeading = new TH2D("hPeakHeading",
 				"Peak Heading; Time; Peak Heading (Degrees)",
@@ -199,7 +201,7 @@ int main(int argc, char *argv[])
 					    minDirWrtNorth, maxDirWrtNorth);
 
   TProfile2D* pPeakElevation = new TProfile2D("pPeakElevation",
-					      "Profile of Image Peak vs. Peak Elevtaion vs. Time; Time; Peak Elevation (Degrees); Image peak (no units)",
+					      "Profile of Image Peak vs. Peak Elevation vs. Time; Time; Peak Elevation (Degrees); Image peak (no units)",
 					      numTimeBins, firstRealTime, lastRealTime+1,
 					      numBinsTheta, minTheta, maxTheta);
 
@@ -410,26 +412,25 @@ int main(int argc, char *argv[])
 						     imagePeak);
 	
 	if(TMath::Abs(deltaSolarPhiDeg) < deltaSolarPhiDegCut &&
-	   TMath::Abs(deltaSolarThetaDeg) < deltaSolarThetaCut)
-	  {
+	   TMath::Abs(deltaSolarThetaDeg) < deltaSolarThetaCut){
 	  
-	    hDeltaSolarThetaDegVsTheta->Fill(solarThetaDeg, deltaSolarThetaDeg);	  
-	    hDeltaSolarThetaDegVsPhi->Fill(solarPhiDeg, deltaSolarThetaDeg);
-	    hDeltaSolarThetaDegVsTimeOfDay->Fill(pat->timeOfDay/1000, deltaSolarThetaDeg);
-	    hDeltaSolarPhiDegVsTheta->Fill(solarThetaDeg, deltaSolarPhiDeg);
-	    hDeltaSolarPhiDegVsPhi->Fill(solarPhiDeg, deltaSolarPhiDeg);
-	    hDeltaSolarPhiDegVsTimeOfDay->Fill(pat->timeOfDay/1000, deltaSolarPhiDeg);
+	  hDeltaSolarThetaDegVsTheta->Fill(solarThetaDeg, deltaSolarThetaDeg);	  
+	  hDeltaSolarThetaDegVsPhi->Fill(solarPhiDeg, deltaSolarThetaDeg);
+	  hDeltaSolarThetaDegVsTimeOfDay->Fill(pat->timeOfDay/1000, deltaSolarThetaDeg);
+	  hDeltaSolarPhiDegVsTheta->Fill(solarThetaDeg, deltaSolarPhiDeg);
+	  hDeltaSolarPhiDegVsPhi->Fill(solarPhiDeg, deltaSolarPhiDeg);
+	  hDeltaSolarPhiDegVsTimeOfDay->Fill(pat->timeOfDay/1000, deltaSolarPhiDeg);
 
-	    hDeltaSolarPhiDegVsDeltaSolarPhiDeg->Fill(deltaSolarPhiDeg, deltaSolarThetaDeg);
-	    hImagePeakHilbertPeakSunPhiTheta->Fill(imagePeak, hilbertPeak);
+	  hDeltaSolarPhiDegVsDeltaSolarPhiDeg->Fill(deltaSolarPhiDeg, deltaSolarThetaDeg);
+	  hImagePeakHilbertPeakSunPhiTheta->Fill(imagePeak, hilbertPeak);
 	}
-	
 	else if(TMath::Abs(deltaSolarPhiDeg) < deltaSolarPhiDegCut){
 	  hImagePeakHilbertPeakSunPhi->Fill(imagePeak, hilbertPeak);	  
 	  // points to the sun in phi only
 	}
 	else{
 	  goodPeak = peakInd;
+	  break;
 	}
       }
 
@@ -478,6 +479,11 @@ int main(int argc, char *argv[])
 	p.inc(entry, maxEntry);	
 	continue;
       }
+
+      if((findImage > 0 && imagePeak >= findImage) || (findHilbert > 0 && hilbertPeak >= findHilbert)){
+      	std::cerr << header->run << "\t" << header->eventNumber << "\t" << imagePeak << "\t" << hilbertPeak << std::endl;;
+      }
+      
 
       if(recoPhiDeg < 0) recoPhiDeg += 360;
       else if(recoPhiDeg >= 360) recoPhiDeg -= 360;
