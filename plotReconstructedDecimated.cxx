@@ -36,37 +36,44 @@
 int main(int argc, char *argv[])
 {
 
-  if(!(argc==3 || argc==2)){
-    std::cerr << "Usage 1: " << argv[0] << " [run]" << std::endl;
-    std::cerr << "Usage 2: " << argv[0] << " [firstRun] [lastRun]" << std::endl;
+  if(!(argc==2)){
+    std::cerr << "Usage 1: " << argv[0] << " [cutStep]" << std::endl;
     return 1;
   }
   
+  const Int_t firstRun = 204; //atoi(argv[1]);
+  const Int_t lastRun = 281;
+  std::cout << firstRun << "\t" << lastRun << std::endl;
+  const int cutStep = atoi(argv[1]);  
+  std::cout << "cutStep = " << cutStep << std::endl;
+  
+  
+  // quite complicated, let's try and assign the cut values based on a passed variable
+
+  // first step
+  const double ratioCutHigh = cutStep <= 0 ? 9999 : 2.8;
+  const double ratioCutLow = cutStep <= 0 ? -9999 : 1.14;
+
+  // second step
+  const int maxAbsDeltaPhiSect = cutStep <= 1 ? 1 : 9999;
+
+  // third step...
+
+  
+  const bool useTimeCut = true;
+  const int numGoodTimes = 1;
+  UInt_t goodTimesStart[numGoodTimes] = {1419100000};
+  UInt_t goodTimesEnd[numGoodTimes] = {1419500000};
   
   const double findHilbert = 0; //120; //50;
   const double findImage = 0; //0.074; //0.1; //0.06;
+  
+  // const double cutHilbert = 100; //50;
+  // const double cutImage = 0.1; //0.06;
+  const double cutHilbert = 0; //100; //50;
+  const double cutImage = 0; //0.088; //0; //0.1; //0.06;
 
- // cuts events below these numbers
-  const double cutHilbert = 0;
-  const double cutImage = 0;
   
-  const double ratioCutHigh = 2.8; //9999;
-  const double ratioCutLow = 1.14; //9999;
-
-  const int maxAbsDeltaPhiSect = 1;
-  
-  const bool useTimeCut = true; //true; //false;
-  const int numGoodTimes = 1;
-  UInt_t goodTimesStart[numGoodTimes] = {1419400000}; //{1419100000};
-  UInt_t goodTimesEnd[numGoodTimes] =   {1419600000}; //{1419500000};
-  
-  
-  std::cout << argv[0] << "\t" << argv[1];
-  if(argc==3){std::cout << "\t" << argv[2];}
-  std::cout << std::endl;
-  const Int_t firstRun = atoi(argv[1]);
-  const Int_t lastRun = argc==3 ? atoi(argv[2]) : firstRun;
-
   TChain* headChain = new TChain("headTree");
   TChain* gpsChain = new TChain("adu5PatTree");
   TChain* eventSummaryChain = new TChain("eventSummaryTree");
@@ -438,19 +445,24 @@ int main(int argc, char *argv[])
       
       
 
-      Double_t solarPhiDeg = eventSummary->sun.phi;
-      Double_t solarThetaDeg = -1*eventSummary->sun.theta;           
 
+      Double_t solarPhiDeg = eventSummary->sun.phi;
+      Double_t solarThetaDeg = -1*eventSummary->sun.theta;
+      
       Double_t deltaSolarPhiDeg = RootTools::getDeltaAngleDeg(recoPhiDeg, solarPhiDeg);
       solarPhiDeg = solarPhiDeg < 0 ? solarPhiDeg + 360 : solarPhiDeg;
       Double_t deltaSolarThetaDeg = recoThetaDeg - solarThetaDeg;
 
-      hDeltaSolarPhiDeg[peakInd]->Fill(deltaSolarThetaDeg);
-      hDeltaSolarThetaDeg[peakInd]->Fill(deltaSolarPhiDeg);
 
+      // relative sun position
+      hDeltaSolarPhiDeg[peakInd]->Fill(deltaSolarPhiDeg);
+      hDeltaSolarThetaDeg[peakInd]->Fill(deltaSolarThetaDeg);
+      hDeltaSolarPhiDegVsDeltaSolarThetaDeg->Fill(deltaSolarPhiDeg, deltaSolarThetaDeg);
       pImagePeakVsDeltaSolarPhiDegVsDeltaSolarThetaDeg->Fill(deltaSolarPhiDeg,
 							     deltaSolarThetaDeg,
 							     imagePeak);
+
+      // abs sun position relative to other variables
       pImagePeakVsDeltaSolarPhiDegVsSunTheta->Fill(solarThetaDeg,
 						   deltaSolarThetaDeg,
 						   imagePeak);
@@ -462,8 +474,7 @@ int main(int argc, char *argv[])
       hDeltaSolarPhiDegVsPhi->Fill(solarPhiDeg, deltaSolarPhiDeg);
       hDeltaSolarPhiDegVsTimeOfDay->Fill(pat->timeOfDay/1000, deltaSolarPhiDeg);
 
-      hDeltaSolarPhiDegVsDeltaSolarThetaDeg->Fill(deltaSolarPhiDeg, deltaSolarThetaDeg);
-      
+
       if(TMath::Abs(deltaSolarPhiDeg) < deltaSolarPhiDegCut &&
 	 TMath::Abs(deltaSolarThetaDeg) < deltaSolarThetaCut){
 	hImagePeakHilbertPeakSunPhiTheta->Fill(imagePeak, hilbertPeak);      
@@ -471,6 +482,7 @@ int main(int argc, char *argv[])
       else if(TMath::Abs(deltaSolarPhiDeg) < deltaSolarPhiDegCut){
 	hImagePeakHilbertPeakSunPhi->Fill(imagePeak, hilbertPeak);	  
       }
+      
       
 
 
