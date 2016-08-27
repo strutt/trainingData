@@ -457,7 +457,7 @@ int main(int argc, char *argv[])
       if(wasAnL3Trigger == true && deltaPhiSect >= NUM_PHI/2){
 	std::cerr << "You bloody fool of a took" << wasAnL3Trigger << "\t" << deltaPhiSect << std::endl;
       }
-      if(isMinBias> 0 && TMath::Abs(deltaPhiSect) > maxAbsDeltaPhiSect){
+      if(isMinBias==0 && TMath::Abs(deltaPhiSect) > maxAbsDeltaPhiSect){
 	p.inc(entry, maxEntry);
 	continue;
       }

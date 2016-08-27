@@ -27,6 +27,8 @@
 #include "OutputConvention.h"
 #include "AnitaEventSummary.h"
 #include "FFTtools.h"
+#include "AnalysisCuts.h"
+
 
 int main(int argc, char *argv[])
 {
@@ -42,18 +44,6 @@ int main(int argc, char *argv[])
   const int cutStep = atoi(argv[1]);  
   std::cout << "cutStep = " << cutStep << std::endl;
   
-  
-  // quite complicated, let's try and assign the cut values based on a passed variable
-
-  // first step
-  const double ratioCutHigh = cutStep >= 1 ? 2.8 : 9999;
-  const double ratioCutLow = cutStep >= 1 ? 1.14 : -9999;
-
-  // second step
-  const int maxAbsDeltaPhiSect = cutStep >= 2 ? 1 : 9999;
-
-  // third step...
-  const double deltaSolarPhiDegCut = cutStep >= 2 ? 20 : 9999; // degrees
 
 
 
@@ -376,31 +366,16 @@ int main(int argc, char *argv[])
 	std::cerr << "???" << eventSummary->eventNumber << "\t" << eventNumberDQ << std::endl;
       }      
     
-      // CUT FLOW
-      // Aiming for combined reduction of factor O(1e9) for thermal noise events
-      // How many signal events will be left?
-      // here we go!
-    
-      // Step 1: cut self triggered blasts    
-      Double_t maxRatio = 0;
-      for(int phi=0; phi < NUM_PHI; phi++){
-	if(pol==AnitaPol::kVertical && phi==7){
-	  continue;
-	}
-	Double_t ratio = peakToPeak[pol][phi+2*NUM_PHI]/peakToPeak[pol][phi];
-	if(ratio > maxRatio){
-	  maxRatio = ratio;
-	}
-      }
-      if(maxRatio > ratioCutHigh || maxRatio < ratioCutLow){
-	// std::cerr << eventNumberDQ << "\t" << maxRatio << std::endl;
-	p.inc(entry, maxEntry);
+
+      
+      Double_t maxRatio;
+      AnalysisCuts::Status_t selfTriggeredBlastCut;
+      selfTriggeredBlastCut = AnalysisCuts::applyBottomToTopRingPeakToPeakRatioCut(pol, peakToPeak[pol], maxRatio);
+      if(cutStep >= 1 && selfTriggeredBlastCut==AnalysisCuts::kFail){
+	p.inc(entry, maxEntry);	
 	continue;
       }
       hMaxBottomToTopPeakToPeakRatio->Fill(maxRatio);        
-    
-
-
 
       
       
@@ -412,54 +387,21 @@ int main(int argc, char *argv[])
       Double_t recoThetaDeg = eventSummary->peak[pol][peakInd].theta;
       Double_t imagePeak = eventSummary->peak[pol][peakInd].value;      
       Double_t hilbertPeak = eventSummary->coherent[pol][peakInd].peakHilbert;
+
+      
+
       
       // CUT FLOW
       // Step 2: cut phi-sector angle triggers
-      const double aftForeOffset = 45; // in cc it's
-      const double bin0PhiDeg = -aftForeOffset + DEGREES_IN_CIRCLE;
-      double angleThroughPhiSectors = recoPhiDeg - bin0PhiDeg;
-      angleThroughPhiSectors += angleThroughPhiSectors < 0 ? DEGREES_IN_CIRCLE : 0;
-      angleThroughPhiSectors -= angleThroughPhiSectors >= DEGREES_IN_CIRCLE ? DEGREES_IN_CIRCLE : 0;      
-      if(angleThroughPhiSectors < 0 || angleThroughPhiSectors >= DEGREES_IN_CIRCLE){
-	std::cerr << "you moron " << angleThroughPhiSectors << "\t" << recoPhiDeg << std::endl;
-      }
-      // const double phiRelativeToPhiSector0 = RootTools::getDeltaAngleDeg(recoPhiDeg, -aftForeOffset);
-      Int_t phiSectorOfPeak = Int_t(angleThroughPhiSectors/PHI_RANGE);
-      if(phiSectorOfPeak < 0 || phiSectorOfPeak >= NUM_PHI){
-	std::cerr << "you idiot again  " << phiSectorOfPeak << "\t" << recoPhiDeg << std::endl;
-      }
-
-      int isMinBias = header->getTriggerBitSoftExt();
-      
-      bool wasAnL3Trigger = false;
       Int_t deltaPhiSect = NUM_PHI/2;
-      for(int phi=0; phi<NUM_PHI; phi++){
-	UInt_t phiMask = RootTools::getBit(phi, header->getL3TrigPattern(pol));
 
-	if(phiMask > 0){
-	  Int_t dPhiSect = phiSectorOfPeak - phi;
-	  if(dPhiSect < -NUM_PHI/2){
-	    dPhiSect += NUM_PHI;
-	  }
-	  else if(dPhiSect >= NUM_PHI/2){
-	    dPhiSect -= NUM_PHI;
-	  }
-	  if(TMath::Abs(dPhiSect) < deltaPhiSect){
-	    deltaPhiSect = TMath::Abs(dPhiSect);
-	    wasAnL3Trigger = true;
-	  }
-	}
-      }
-      if(wasAnL3Trigger == true && deltaPhiSect >= NUM_PHI/2){
-	std::cerr << "You bloody fool of a took" << wasAnL3Trigger << "\t" << deltaPhiSect << std::endl;
-      }
-      // if(deltaPhiSect >= NUM_PHI/2){
-      // 	std::cerr << header->run << "\t" << header->eventNumber << std::endl;
-      // }
-      if(isMinBias> 0 && TMath::Abs(deltaPhiSect) > maxAbsDeltaPhiSect){
-	p.inc(entry, maxEntry);
+      AnalysisCuts::Status_t l3TriggerCut;
+      l3TriggerCut = AnalysisCuts::L3TriggerDirectionCut(pol, header, recoPhiDeg, deltaPhiSect);
+      if(cutStep >= 2 && l3TriggerCut==AnalysisCuts::kFail){
+	p.inc(entry, maxEntry);	
 	continue;
       }
+      
       hDeltaPhiSect->Fill(deltaPhiSect);
 
 
@@ -492,8 +434,11 @@ int main(int argc, char *argv[])
       else if(TMath::Abs(deltaSolarPhiDeg) < deltaSolarPhiDegClose){
 	hImagePeakHilbertPeakSunPhi->Fill(imagePeak, hilbertPeak);	  
       }      
+
       
-      if(TMath::Abs(deltaSolarPhiDeg) < deltaSolarPhiDegCut){
+      AnalysisCuts::Status_t sunCut;
+      sunCut = AnalysisCuts::applySunPointingCut(deltaSolarPhiDeg);
+      if(cutStep>=3 && sunCut==AnalysisCuts::kFail){
 	p.inc(entry, maxEntry);	
 	continue;
       }
