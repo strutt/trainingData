@@ -20,8 +20,8 @@ void plotDefineThermalCut(){
   TFile* f = OutputConvention::getFile("defineThermalCutPlots*.root");
   TTree* t = (TTree*) f->Get("TestTree");
   t->Show(0);
-  const double minFischer = -20;
-  const double maxFischer = 20;
+  const double minFischer = -3;
+  const double maxFischer = 6;
   const int nBins = 2048;
 
   TString isSignal = "classID==0";
@@ -47,6 +47,9 @@ void plotDefineThermalCut(){
 
   hSignal->SetLineColor(kRed);
   hSignal2->SetLineColor(kRed);
+  hSignal->SetMarkerStyle(0);
+  hSignal2->SetMarkerStyle(0);
+  
   
   hBackground->SetLineColor(kBlue);
   hBackground2->SetLineColor(kBlue);
@@ -95,8 +98,10 @@ void plotDefineThermalCut(){
   hBackgroundInt->Draw("same");
   c2->SetLogy(1);
   hSignalInt->SetMinimum(1e-8);
-  hBackgroundInt->Fit("expo","", "", -1, 10);
-
+  TF1* backgroundFit = new TF1("backgroundFit", "exp([constant]+[slope]*x)", -5, 5);
+  backgroundFit->SetLineColor(kBlue);  
+  hBackgroundInt->Fit(backgroundFit,"", "", -1.6, -1.4);
+  backgroundFit->Draw("lsame");
   TGraph* gr = new TGraph();
   for(int i=1; i <= hSignalInt->GetNbinsX(); i++){
     double signalRejection = 1-hSignalInt->GetBinContent(i);

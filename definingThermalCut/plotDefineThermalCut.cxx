@@ -40,10 +40,6 @@ int main(int argc, char *argv[]){
   const Int_t numHilbertPeakBins = 1024;
   // const Double_t maxHilbertPeak = 1000;
   const Double_t maxHilbertPeak = 400;
-
-  // <Coefficient Index="0" Value="-2.2592648836783216e+00"/>
-  // <Coefficient Index="1" Value="2.6308202243934204e+01"/>
-  // <Coefficient Index="2" Value="-4.1458971509719778e-02"/>
   
   TH2D* hImagePeakHilbertPeakWais = new TH2D(name, title,
 					     numImagePeakBins, 0, 1,
@@ -54,6 +50,19 @@ int main(int argc, char *argv[]){
   TH2D* hImagePeakHilbertPeakMinBias = new TH2D(name, title,
 						numImagePeakBins, 0, 1,
 						numHilbertPeakBins, 0, maxHilbertPeak);
+  
+  name = "hImagePeakHilbertPeakWais2";
+  title = "Image peak vs. Hilbert Peak ";
+
+  TH2D* hImagePeakHilbertPeakWais2 = new TH2D(name, title,
+					     numImagePeakBins, 0, 1,
+					     numHilbertPeakBins, 0, maxHilbertPeak);
+
+  name = "hImagePeakHilbertPeakQuietMinBias2";
+  title = "Image peak vs. Hilbert Peak ";
+  TH2D* hImagePeakHilbertPeakMinBias2 = new TH2D(name, title,
+						 numImagePeakBins, 0, 1,
+						 numHilbertPeakBins, 0, maxHilbertPeak);
   
   TChain* waisChain = new TChain("eventSummaryTree");
   waisChain->Add("../waisDistributionsPlots/*.root");
@@ -75,10 +84,23 @@ int main(int argc, char *argv[]){
   reader->BookMVA("Fisher", xmlWeightFileName);
 
   std::vector<Float_t> theWeights = getWeightsFromXml(xmlWeightFileName);
+
+
+  // want the line that's perpendicular to the vector of weights
+  // here x is the imagePeak: weights[1]
+  // here y in the hilbertPeak: weights[2]
+  // so the grad of the weights is weights[2]/weights[1]
+  // so the perpendicular lines has a gradient -1*(weights[1]/weights[2])
+  // What about the intercept?
+  // Well, the cut is defined at sum over weighted vars = 0?
+  // So the point of intersection of both lines is w0 + w1x + w2y = 0
+  // y = -w0/w2 - w1x/w2
+  // and y = mx + c = -w1x/w2 + c
+  //
   
   TF1* fCutLine = new TF1("fCutLine", "[0]*x + [1]");
-  fCutLine->SetParameter(0, theWeights.at(1));
-  fCutLine->SetParameter(1, theWeights.at(2));
+  fCutLine->SetParameter(0, -1*theWeights.at(1)/theWeights.at(2));
+  fCutLine->SetParameter(1, -1*theWeights.at(0)/theWeights.at(2));
   // fCutLine->SetParameter(1, -1*-2.2592648836783216e+00);  
   fCutLine->Write();
   
@@ -123,17 +145,25 @@ int main(int argc, char *argv[]){
 
       double tFisher = reader->EvaluateMVA("Fisher");
       // std::cout << ph << "  " << ip << std::endl;
-      // std::cout << "tFisher = " << tFisher << std::endl;
+      // double tFisher2 = theWeights[0] + theWeights[1]*ip + theWeights[2]*ph;
+      // std::cout << "tFisher = " << tFisher - tFisher2 << std::endl;
 
       if ( i == 0 ){ 
         hFishSig->Fill(tFisher);
 	hImagePeakHilbertPeakWais->Fill(ip, ph);	
-	if ( tFisher > 0) sigCount++;
+	if ( tFisher > 0) {
+	  sigCount++;
+	  hImagePeakHilbertPeakWais2->Fill(ip, ph);		  
+	}
+	
       }
       else if ( i == 1 ){
         hFishBkg->Fill(tFisher);
 	hImagePeakHilbertPeakMinBias->Fill(ip, ph);
-	if ( tFisher > 0) bkgCount++;
+	if ( tFisher > 0){
+	  bkgCount++;
+	  hImagePeakHilbertPeakMinBias2->Fill(ip, ph);	  
+	}
       }
       p.inc(j, numEntries[i]);
     }

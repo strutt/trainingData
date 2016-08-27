@@ -8,12 +8,12 @@
 
 Method         : Fisher::Fisher
 TMVA Release   : 4.2.1         [262657]
-ROOT Release   : 6.06/02       [394754]
+ROOT Release   : 6.06/06       [394758]
 Creator        : benstrutt
-Date           : Wed May 25 17:17:06 2016
-Host           : Darwin yosemitevm.local 14.5.0 Darwin Kernel Version 14.5.0: Mon Jan 11 18:48:35 PST 2016; root:xnu-2782.50.2~1/RELEASE_X86_64 x86_64
-Dir            : /Users/benstrutt/UCL/ANITA/anita3Analysis/decimatedDistributions/definingThermalCut
-Training events: 321786
+Date           : Sat Aug 27 18:37:30 2016
+Host           : Darwin macavity-the-mystery-cat.local 14.5.0 Darwin Kernel Version 14.5.0: Thu Jun 16 19:58:21 PDT 2016; root:xnu-2782.50.4~1/RELEASE_X86_64 x86_64
+Dir            : /Users/benstrutt/UCL/ANITA/anita3Analysis/trainingData/definingThermalCut
+Training events: 94625
 Analysis type  : [Classification]
 
 
@@ -34,8 +34,8 @@ IgnoreNegWeightsInTraining: "False" [Events with negative weights are ignored in
 #VAR -*-*-*-*-*-*-*-*-*-*-*-* variables *-*-*-*-*-*-*-*-*-*-*-*-
 
 NVar 2
-peak[0][1].value              peak_0__1_.value              peak[0][1].value              peak[0][1].value                                                'D'    [0.0278257895261,0.740023910999]
-coherent[0][1].peakHilbert    coherent_0__1_.peakHilbert    coherent[0][1].peakHilbert    coherent[0][1].peakHilbert                                      'D'    [10.0543613434,500.560119629]
+imagePeak                     imagePeak                     imagePeak                     imagePeak                                                       'D'    [0.0342910327017,0.437673002481]
+hilbertPeak                   hilbertPeak                   hilbertPeak                   hilbertPeak                                                     'D'    [20.8259296417,259.69821167]
 NSpec 0
 
 
@@ -82,7 +82,7 @@ class ReadFisher : public IClassifierReader {
         fIsNormalised( false )
    {      
       // the training input variables
-      const char* inputVars[] = { "peak[0][1].value", "coherent[0][1].peakHilbert" };
+      const char* inputVars[] = { "imagePeak", "hilbertPeak" };
 
       // sanity checks
       if (theInputVars.size() <= 0) {
@@ -166,9 +166,9 @@ class ReadFisher : public IClassifierReader {
 
 inline void ReadFisher::Initialize() 
 {
-   fFisher0 = -2.26528521417;
-   fFisherCoefficients.push_back( 23.6133653618 );
-   fFisherCoefficients.push_back( -0.0405771770099 );
+   fFisher0 = -2.81448292602;
+   fFisherCoefficients.push_back( 15.7929197118 );
+   fFisherCoefficients.push_back( 0.00783314562848 );
 
    // sanity check
    if (fFisherCoefficients.size() != fNvars) {

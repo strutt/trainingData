@@ -96,3 +96,6 @@ AnalysisCuts::Status_t AnalysisCuts::applySunPointingCut(Double_t deltaSolarPhiD
   }
   return status;
 }
+
+
+

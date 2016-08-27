@@ -30,7 +30,7 @@
 #include "OutputConvention.h"
 #include "AnitaEventSummary.h"
 #include "FFTtools.h"
-
+#include "AnalysisCuts.h"
 
 
 int main(int argc, char *argv[])
@@ -41,8 +41,6 @@ int main(int argc, char *argv[])
     std::cerr << "Usage 2: " << argv[0] << " [firstRun] [lastRun]" << std::endl;
     return 1;
   }
-
-  const double ratioCut = 2.8;
   
   std::cout << argv[0] << "\t" << argv[1];
   if(argc==3){std::cout << "\t" << argv[2];}
@@ -53,6 +51,7 @@ int main(int argc, char *argv[])
 
   const int polInd = AnitaPol::kHorizontal;
   
+  TChain* headChain = new TChain("headTree");
   TChain* eventSummaryChain = new TChain("eventSummaryTree");
   TChain* dataQualityChain = new TChain("dataQualityTree");    
 
@@ -61,7 +60,10 @@ int main(int argc, char *argv[])
       continue;
     }
 
-    TString fileName = TString::Format("filter260-370-400-762/reconstructWaisPlots_%d_*.root", run);
+    TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/headFile%d.root", run, run);
+    headChain->Add(fileName);
+
+    fileName = TString::Format("filter260-370-400-762-5peaks/reconstructWaisPlots_%d_*.root", run);
     // TString fileName = TString::Format("filter260and370/reconstructWaisPlots_%d_*.root", run);    
     // TString fileName = TString::Format("test400MHzExt/reconstructDecimatedPlots_%d_*.root", run);    
     eventSummaryChain->Add(fileName);
@@ -70,6 +72,10 @@ int main(int argc, char *argv[])
     dataQualityChain->Add(fileName);
   }
 
+  if(headChain->GetEntries()==0){
+    std::cerr << "Unable to find header files!" << std::endl;
+    return 1;
+  }
   if(eventSummaryChain->GetEntries()==0){
     std::cerr << "Unable to find eventSummary files!" << std::endl;
     return 1;
@@ -85,7 +91,10 @@ int main(int argc, char *argv[])
   dataQualityChain->SetBranchAddress("eventNumber", &eventNumberDQ);
   AnitaEventSummary* eventSummary = NULL;
   eventSummaryChain->SetBranchAddress("eventSummary", &eventSummary);  
-
+  RawAnitaHeader* header = NULL;
+  headChain->SetBranchAddress("header", &header);
+  headChain->BuildIndex("eventNumber");
+  
   OutputConvention oc(argc, argv);
   TString outFileName = oc.getOutputFileName();
   TFile* outFile = new TFile(outFileName, "recreate");
@@ -112,32 +121,60 @@ int main(int argc, char *argv[])
   for(Long64_t entry = startEntry; entry < maxEntry; entry++){
     eventSummaryChain->GetEntry(entry);
     dataQualityChain->GetEntry(entry);
+    Int_t entry2 = headChain->GetEntryNumberWithIndex(eventSummary->eventNumber);
 
-    if(eventSummary->eventNumber != eventNumberDQ){
-      std::cerr << "???" << eventSummary->eventNumber << "\t" << eventNumberDQ << std::endl;
+    if(entry2 < 0){
+      std::cerr << "??????????" << std::endl;
     }
-    
-    Double_t maxRatio = 0;
-    for(Int_t polInd=0; polInd < NUM_POL; polInd++){      
-      for(int phi=0; phi < NUM_PHI; phi++){
-	if(polInd==1 && phi==7){
-	  continue;
-	}
-	Double_t ratio = peakToPeak[polInd][phi+32]/peakToPeak[polInd][phi];
-	if(ratio > maxRatio){
-	  maxRatio = ratio;
-	}
+    else{
+      const int peakInd = 0;
+      AnitaPol::AnitaPol_t pol = AnitaPol::kHorizontal;
+      Double_t maxRatio;
+      AnalysisCuts::Status_t selfTriggeredBlastCut;
+      selfTriggeredBlastCut = AnalysisCuts::applyBottomToTopRingPeakToPeakRatioCut(pol, peakToPeak[pol], maxRatio);
+      if(selfTriggeredBlastCut==AnalysisCuts::kFail){
+	p.inc(entry, maxEntry);	
+	continue;
       }
-    }
-    if(maxRatio > ratioCut){
-      p.inc(entry, maxEntry);
-      continue;
-    }
-    
-    imagePeak = eventSummary->peak[polInd][1].value;
-    hilbertPeak = eventSummary->coherent[polInd][1].peakHilbert;
 
-    outTree->Fill();
+      
+      Double_t recoPhiDeg = eventSummary->peak[pol][peakInd].phi;
+      recoPhiDeg += recoPhiDeg < 0 ? DEGREES_IN_CIRCLE : 0;      
+      // Double_t recoThetaDeg = eventSummary->peak[pol][peakInd].theta;
+      imagePeak = eventSummary->peak[pol][peakInd].value;      
+      hilbertPeak = eventSummary->coherent[pol][peakInd].peakHilbert;
+
+      
+
+      
+      // CUT FLOW
+      // Step 2: cut phi-sector angle triggers
+      Int_t deltaPhiSect = NUM_PHI/2;
+
+      AnalysisCuts::Status_t l3TriggerCut;
+      l3TriggerCut = AnalysisCuts::L3TriggerDirectionCut(pol, header, recoPhiDeg, deltaPhiSect);
+      if(l3TriggerCut==AnalysisCuts::kFail){
+	p.inc(entry, maxEntry);	
+	continue;
+      }
+
+
+      Double_t solarPhiDeg = eventSummary->sun.phi;
+      Double_t deltaSolarPhiDeg = RootTools::getDeltaAngleDeg(recoPhiDeg, solarPhiDeg);
+      AnalysisCuts::Status_t sunCut;
+      sunCut = AnalysisCuts::applySunPointingCut(deltaSolarPhiDeg);
+      if(sunCut==AnalysisCuts::kFail){
+	p.inc(entry, maxEntry);	
+	continue;
+      }
+    
+      // imagePeak = eventSummary->peak[polInd][1].value;
+      // hilbertPeak = eventSummary->coherent[polInd][1].peakHilbert;
+      imagePeak = eventSummary->peak[polInd][peakInd].value;
+      hilbertPeak = eventSummary->coherent[polInd][peakInd].peakHilbert;
+
+      outTree->Fill();
+    }
     p.inc(entry, maxEntry);
   }
   

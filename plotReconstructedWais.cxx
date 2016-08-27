@@ -195,6 +195,7 @@ int main(int argc, char *argv[])
 					      numBinsTheta, minTheta, maxTheta);
 
 
+
   TH1D* hThetaDeg = new TH1D("hThetaDeg",
 			     "Peak Elevation; #theta_{peak} (Degrees); Events per bin",
 			     numBinsPhi, -90, 90);
@@ -456,11 +457,6 @@ int main(int argc, char *argv[])
       pImagePeakVsDeltaSolarPhiDegVsDeltaSolarThetaDeg->Fill(deltaSolarPhiDeg,
 							     deltaSolarThetaDeg,
 							     imagePeak);
-
-
-
-
-
 
 
 
