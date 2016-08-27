@@ -57,7 +57,13 @@ int main(int argc, char *argv[])
   const int maxAbsDeltaPhiSect = cutStep <= 1 ? 9999 : 1;
 
   // third step...
+  const double deltaSolarPhiDegCut = cutStep <= 2 ? 9999 : 20; // degrees
 
+
+
+  // for image peak / hilbert peak histograms
+  const double deltaSolarPhiDegClose = 20; 
+  const double deltaSolarThetaClose = 5;
   
   const bool useTimeCut = true;
   const int numGoodTimes = 1;
@@ -170,10 +176,6 @@ int main(int argc, char *argv[])
   const double maxTheta = 90;
   const double minTheta = -90;
 
-  // const double deltaSolarPhiDegCut = 20; // degrees
-  const double deltaSolarPhiDegCut = 10; // degrees
-  const double deltaSolarThetaCut = 10;
-
   const Int_t numImagePeakBins = 1024;
   const Int_t numHilbertPeakBins = 1024;
   const Double_t maxHilbertPeak = 2048;  
@@ -220,8 +222,8 @@ int main(int argc, char *argv[])
 			     numBinsPhi, -90, 90);
   
   TH1D* hDeltaPhiSect = new TH1D("hDeltaPhiSect",
-				 "Peak distance to nearest #Phi-sector; #delta#Phi-sector; Events per bin",
-				 NUM_PHI, -NUM_PHI/2, NUM_PHI/2);
+				 "Number of #Phi-sectors between image peak and nearest L3 trigger; #delta#Phi-sector; Events per bin",
+				 NUM_PHI/2+1, 0, NUM_PHI/2 + 1); // last bin == no L3 triggers
 
   TH1D* hMaxBottomToTopPeakToPeakRatio = new TH1D("hBottomToTopPeakToPeakRatio",
 						  "Maximum peak-to-peak ratio between top and bottom rings; Ratio of peak-to-peak value (no units); Number of events",
@@ -342,42 +344,6 @@ int main(int argc, char *argv[])
   for(Long64_t entry = startEntry; entry < maxEntry; entry++){
     eventSummaryChain->GetEntry(entry);
 
-    dataQualityChain->GetEntry(entry);
-
-    if(eventSummary->eventNumber != eventNumberDQ){
-      std::cerr << "???" << eventSummary->eventNumber << "\t" << eventNumberDQ << std::endl;
-    }
-
-    AnitaPol::AnitaPol_t pol = AnitaPol::kVertical;
-    if(eventSummary->peak[AnitaPol::kHorizontal][0].value > eventSummary->peak[AnitaPol::kVertical][0].value){
-      pol = AnitaPol::kHorizontal;
-    }
-
-
-    // CUT FLOW
-    // Aiming for combined reduction of factor O(1e9) for thermal noise events
-    // How many signal events will be left?
-    // here we go!
-    
-    // Step 1: cut self triggered blasts    
-    Double_t maxRatio = 0;
-    for(int phi=0; phi < NUM_PHI; phi++){
-      if(pol==AnitaPol::kVertical && phi==7){
-	continue;
-      }
-      Double_t ratio = peakToPeak[pol][phi+2*NUM_PHI]/peakToPeak[pol][phi];
-      if(ratio > maxRatio){
-	maxRatio = ratio;
-      }
-    }
-    if(maxRatio > ratioCutHigh || maxRatio < ratioCutLow){
-      // std::cerr << eventSummary->run << "\t" << eventNumberDQ << "\t" << maxRatio << std::endl;
-      p.inc(entry, maxEntry);
-      continue;
-    }
-    hMaxBottomToTopPeakToPeakRatio->Fill(maxRatio);
-
-    
     Int_t headEntry = headChain->GetEntryNumberWithIndex(eventSummary->eventNumber, 0);
     if(headEntry < 0){
       std::cerr << "Now what!?\t" << headEntry << "\t" << eventSummary->eventNumber << std::endl;
@@ -385,6 +351,14 @@ int main(int argc, char *argv[])
     else{
       headChain->GetEntry(headEntry);
 
+      AnitaPol::AnitaPol_t pol = AnitaPol::kVertical;
+      if(eventSummary->peak[AnitaPol::kHorizontal][0].value > eventSummary->peak[AnitaPol::kVertical][0].value){
+	pol = AnitaPol::kHorizontal;
+      }
+
+      
+
+      // timing selection...
       bool isGoodTime = false;
       for(int i=0; i < numGoodTimes; i++){
 	if(header->realTime >= goodTimesStart[i] && header->realTime < goodTimesEnd[i]){
@@ -396,11 +370,41 @@ int main(int argc, char *argv[])
 	continue;
       }
 
+    
+      dataQualityChain->GetEntry(entry);
+
+      if(eventSummary->eventNumber != eventNumberDQ){
+	std::cerr << "???" << eventSummary->eventNumber << "\t" << eventNumberDQ << std::endl;
+      }
+
+
+
+      // CUT FLOW
+      // Aiming for combined reduction of factor O(1e9) for thermal noise events
+      // How many signal events will be left?
+      // here we go!
+    
+      // Step 1: cut self triggered blasts    
+      Double_t maxRatio = 0;
+      for(int phi=0; phi < NUM_PHI; phi++){
+	if(pol==AnitaPol::kVertical && phi==7){
+	  continue;
+	}
+	Double_t ratio = peakToPeak[pol][phi+2*NUM_PHI]/peakToPeak[pol][phi];
+	if(ratio > maxRatio){
+	  maxRatio = ratio;
+	}
+      }
+      if(maxRatio > ratioCutHigh || maxRatio < ratioCutLow){
+	// std::cerr << eventSummary->run << "\t" << eventNumberDQ << "\t" << maxRatio << std::endl;
+	p.inc(entry, maxEntry);
+	continue;
+      }
+      hMaxBottomToTopPeakToPeakRatio->Fill(maxRatio);
+
+    
 
       
-
-
-
       
       // Get event info
       const int peakInd = 0;
@@ -410,14 +414,27 @@ int main(int argc, char *argv[])
       Double_t recoThetaDeg = eventSummary->peak[pol][peakInd].theta;
       Double_t imagePeak = eventSummary->peak[pol][peakInd].value;      
       Double_t hilbertPeak = eventSummary->coherent[pol][peakInd].peakHilbert;
+
+
       
       // CUT FLOW
       // Step 2: cut phi-sector angle triggers
-      const double aftForeOffset = 45; // cba to find actual value
-      const double phiRelativeToPhiSector0 = RootTools::getDeltaAngleDeg(recoPhiDeg, -aftForeOffset);
-      Int_t phiSectorOfPeak = TMath::Nint(phiRelativeToPhiSector0/PHI_RANGE); // approx
-
-      Int_t deltaPhiSect = NUM_PHI;
+      const double aftForeOffset = 45; // in cc it's
+      const double bin0PhiDeg = -aftForeOffset + DEGREES_IN_CIRCLE;
+      double angleThroughPhiSectors = recoPhiDeg - bin0PhiDeg;
+      angleThroughPhiSectors += angleThroughPhiSectors < 0 ? DEGREES_IN_CIRCLE : 0;
+      angleThroughPhiSectors -= angleThroughPhiSectors >= DEGREES_IN_CIRCLE ? DEGREES_IN_CIRCLE : 0;      
+      if(angleThroughPhiSectors < 0 || angleThroughPhiSectors >= DEGREES_IN_CIRCLE){
+	std::cerr << "you moron " << angleThroughPhiSectors << "\t" << recoPhiDeg << std::endl;
+      }
+      // const double phiRelativeToPhiSector0 = RootTools::getDeltaAngleDeg(recoPhiDeg, -aftForeOffset);
+      Int_t phiSectorOfPeak = Int_t(angleThroughPhiSectors/PHI_RANGE);
+      if(phiSectorOfPeak < 0 || phiSectorOfPeak >= NUM_PHI){
+	std::cerr << "you idiot again  " << phiSectorOfPeak << "\t" << recoPhiDeg << std::endl;
+      }
+      
+      bool wasAnL3Trigger = false;
+      Int_t deltaPhiSect = NUM_PHI/2;
       for(int phi=0; phi<NUM_PHI; phi++){
 	UInt_t phiMask = RootTools::getBit(phi, header->getL3TrigPattern(pol));
 
@@ -430,13 +447,17 @@ int main(int argc, char *argv[])
 	    dPhiSect -= NUM_PHI;
 	  }
 	  if(TMath::Abs(dPhiSect) < deltaPhiSect){
-	    deltaPhiSect = dPhiSect;
+	    deltaPhiSect = TMath::Abs(dPhiSect);
+	    wasAnL3Trigger = true;
 	  }
 	}
       }
+      if(wasAnL3Trigger == true && deltaPhiSect >= NUM_PHI/2){
+	std::cerr << "You bloody fool of a took" << wasAnL3Trigger << "\t" << deltaPhiSect << std::endl;
+      }
       if(TMath::Abs(deltaPhiSect) > maxAbsDeltaPhiSect){
 	p.inc(entry, maxEntry);
-	continue;	
+	continue;
       }
       hDeltaPhiSect->Fill(deltaPhiSect);
 
@@ -445,15 +466,42 @@ int main(int argc, char *argv[])
       
       
 
-
+      // CUT FLOW
+      // Step 3: cut phi-direction relative to sun      
       Double_t solarPhiDeg = eventSummary->sun.phi;
       Double_t solarThetaDeg = -1*eventSummary->sun.theta;
-      
+
       Double_t deltaSolarPhiDeg = RootTools::getDeltaAngleDeg(recoPhiDeg, solarPhiDeg);
       solarPhiDeg = solarPhiDeg < 0 ? solarPhiDeg + 360 : solarPhiDeg;
       Double_t deltaSolarThetaDeg = recoThetaDeg - solarThetaDeg;
 
+      // std::cerr << recoThetaDeg << "\t" << solarThetaDeg << "\t" << deltaSolarThetaDeg << "\t";
+      // std::cerr << recoPhiDeg << "\t" << solarPhiDeg << "\t" << deltaSolarPhiDeg << std::endl;
 
+      // abs sun position relative to other variables
+      pImagePeakVsDeltaSolarPhiDegVsSunTheta->Fill(solarThetaDeg,
+						   deltaSolarThetaDeg,
+						   imagePeak);
+
+      if(TMath::Abs(deltaSolarPhiDeg) < deltaSolarPhiDegClose &&
+	 TMath::Abs(deltaSolarThetaDeg) < deltaSolarThetaClose){
+	hImagePeakHilbertPeakSunPhiTheta->Fill(imagePeak, hilbertPeak);	
+      }
+      else if(TMath::Abs(deltaSolarPhiDeg) < deltaSolarPhiDegClose){
+	hImagePeakHilbertPeakSunPhi->Fill(imagePeak, hilbertPeak);	  
+      }      
+      
+      if(TMath::Abs(deltaSolarPhiDeg) < deltaSolarPhiDegCut){
+	p.inc(entry, maxEntry);	
+	continue;
+      }
+
+      hDeltaSolarThetaDegVsTheta->Fill(solarThetaDeg, deltaSolarThetaDeg);
+      hDeltaSolarThetaDegVsPhi->Fill(solarPhiDeg, deltaSolarThetaDeg);
+      hDeltaSolarThetaDegVsTimeOfDay->Fill(pat->timeOfDay/1000, deltaSolarThetaDeg);
+      hDeltaSolarPhiDegVsTheta->Fill(solarThetaDeg, deltaSolarPhiDeg);
+      hDeltaSolarPhiDegVsPhi->Fill(solarPhiDeg, deltaSolarPhiDeg);
+      hDeltaSolarPhiDegVsTimeOfDay->Fill(pat->timeOfDay/1000, deltaSolarPhiDeg);
       // relative sun position
       hDeltaSolarPhiDeg[peakInd]->Fill(deltaSolarPhiDeg);
       hDeltaSolarThetaDeg[peakInd]->Fill(deltaSolarThetaDeg);
@@ -462,26 +510,13 @@ int main(int argc, char *argv[])
 							     deltaSolarThetaDeg,
 							     imagePeak);
 
-      // abs sun position relative to other variables
-      pImagePeakVsDeltaSolarPhiDegVsSunTheta->Fill(solarThetaDeg,
-						   deltaSolarThetaDeg,
-						   imagePeak);
-
-      hDeltaSolarThetaDegVsTheta->Fill(solarThetaDeg, deltaSolarThetaDeg);
-      hDeltaSolarThetaDegVsPhi->Fill(solarPhiDeg, deltaSolarThetaDeg);
-      hDeltaSolarThetaDegVsTimeOfDay->Fill(pat->timeOfDay/1000, deltaSolarThetaDeg);
-      hDeltaSolarPhiDegVsTheta->Fill(solarThetaDeg, deltaSolarPhiDeg);
-      hDeltaSolarPhiDegVsPhi->Fill(solarPhiDeg, deltaSolarPhiDeg);
-      hDeltaSolarPhiDegVsTimeOfDay->Fill(pat->timeOfDay/1000, deltaSolarPhiDeg);
 
 
-      if(TMath::Abs(deltaSolarPhiDeg) < deltaSolarPhiDegCut &&
-	 TMath::Abs(deltaSolarThetaDeg) < deltaSolarThetaCut){
-	hImagePeakHilbertPeakSunPhiTheta->Fill(imagePeak, hilbertPeak);      
-      }
-      else if(TMath::Abs(deltaSolarPhiDeg) < deltaSolarPhiDegCut){
-	hImagePeakHilbertPeakSunPhi->Fill(imagePeak, hilbertPeak);	  
-      }
+
+
+
+
+
       
       
 
