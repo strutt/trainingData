@@ -51,14 +51,14 @@ int main(int argc, char *argv[])
   // quite complicated, let's try and assign the cut values based on a passed variable
 
   // first step
-  const double ratioCutHigh = cutStep <= 0 ? 9999 : 2.8;
-  const double ratioCutLow = cutStep <= 0 ? -9999 : 1.14;
+  const double ratioCutHigh = cutStep >= 1 ?  2.8 : 9999;
+  const double ratioCutLow = cutStep >= 1 ? - 1.14 : 9999;
 
   // second step
-  const int maxAbsDeltaPhiSect = cutStep <= 1 ? 9999 : 1;
+  const int maxAbsDeltaPhiSect = cutStep >= 2 ?  1 : 9999;
 
   // third step...
-  const double deltaSolarPhiDegCut = cutStep <= 2 ? 9999 : 20; // degrees
+  const double deltaSolarPhiDegCut = cutStep >= 3 ? 20 : 9999;
 
 
 
@@ -423,6 +423,8 @@ int main(int argc, char *argv[])
       if(phiSectorOfPeak < 0 || phiSectorOfPeak >= NUM_PHI){
 	std::cerr << "you idiot again  " << phiSectorOfPeak << "\t" << recoPhiDeg << std::endl;
       }
+
+      int isMinBias = header->getTriggerBitSoftExt();
       
       bool wasAnL3Trigger = false;
       Int_t deltaPhiSect = NUM_PHI/2;
@@ -446,7 +448,7 @@ int main(int argc, char *argv[])
       if(wasAnL3Trigger == true && deltaPhiSect >= NUM_PHI/2){
 	std::cerr << "You bloody fool of a took" << wasAnL3Trigger << "\t" << deltaPhiSect << std::endl;
       }
-      if(TMath::Abs(deltaPhiSect) > maxAbsDeltaPhiSect){
+      if(isMinBias> 0 && TMath::Abs(deltaPhiSect) > maxAbsDeltaPhiSect){
 	p.inc(entry, maxEntry);
 	continue;
       }
