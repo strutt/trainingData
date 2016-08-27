@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
   const double ratioCutLow = cutStep <= 0 ? -9999 : 1.14;
 
   // second step
-  const int maxAbsDeltaPhiSect = cutStep <= 1 ? 1 : 9999;
+  const int maxAbsDeltaPhiSect = cutStep <= 1 ?  9999 : 1;
 
   // third step...
 
@@ -351,8 +351,12 @@ int main(int argc, char *argv[])
 
 
 
-    // CUT FLOW:    
-    // Step 0: cut self triggered blasts    
+    // CUT FLOW
+    // Aiming for combined reduction of factor O(1e9) for thermal noise events
+    // How many signal events will be left?
+    // here we go!
+    
+    // Step 1: cut self triggered blasts    
     Double_t maxRatio = 0;
     for(int phi=0; phi < NUM_PHI; phi++){
       if(pol==AnitaPol::kVertical && phi==7){
@@ -400,16 +404,13 @@ int main(int argc, char *argv[])
       const int peakInd = 0;
       
       Double_t recoPhiDeg = eventSummary->peak[pol][peakInd].phi;
+      recoPhiDeg += recoPhiDeg < 0 ? DEGREES_IN_CIRCLE : 0;      
       Double_t recoThetaDeg = eventSummary->peak[pol][peakInd].theta;
       Double_t imagePeak = eventSummary->peak[pol][peakInd].value;      
       Double_t hilbertPeak = eventSummary->coherent[pol][peakInd].peakHilbert;
       
       // CUT FLOW
-      // Aiming for combined reduction of factor O(1e9) for thermal noise events
-      // How many signal events will be left?
-      // here we go!
-
-      // STEP 1 deltaPhiSect      
+      // Step 2: cut phi-sector angle triggers
       const double aftForeOffset = 45; // in cc it's
       const double bin0PhiDeg = -aftForeOffset + DEGREES_IN_CIRCLE;
       double angleThroughPhiSectors = recoPhiDeg - bin0PhiDeg;      

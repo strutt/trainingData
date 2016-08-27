@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
   const double ratioCutLow = cutStep <= 0 ? -9999 : 1.14;
 
   // second step
-  const int maxAbsDeltaPhiSect = cutStep <= 1 ? 1 : 9999;
+  const int maxAbsDeltaPhiSect = cutStep <= 1 ? 9999 : 1;
 
   // third step...
 
@@ -351,8 +351,12 @@ int main(int argc, char *argv[])
 
 
 
-    // CUT FLOW:    
-    // Step 0: cut self triggered blasts    
+    // CUT FLOW
+    // Aiming for combined reduction of factor O(1e9) for thermal noise events
+    // How many signal events will be left?
+    // here we go!
+    
+    // Step 1: cut self triggered blasts    
     Double_t maxRatio = 0;
     for(int phi=0; phi < NUM_PHI; phi++){
       if(pol==AnitaPol::kVertical && phi==7){
@@ -393,26 +397,13 @@ int main(int argc, char *argv[])
       const int peakInd = 0;
       
       Double_t recoPhiDeg = eventSummary->peak[pol][peakInd].phi;
-      recoPhiDeg = recoPhiDeg < 0 ? recoPhiDeg += DEGREES_IN_CIRCLE : 0;
+      recoPhiDeg += recoPhiDeg < 0 ? DEGREES_IN_CIRCLE : 0;
       Double_t recoThetaDeg = eventSummary->peak[pol][peakInd].theta;
-      Double_t imagePeak = eventSummary->peak[pol][peakInd].value;      
+      Double_t imagePeak = eventSummary->peak[pol][peakInd].value;
       Double_t hilbertPeak = eventSummary->coherent[pol][peakInd].peakHilbert;
 
-
-      
       // CUT FLOW
-      // Aiming for combined reduction of factor O(1e9) for thermal noise events
-      // How many signal events will be left?
-      // here we go!
-
-      
-      // STEP 1 deltaPhiSect
-      // CUT FLOW
-      // Aiming for combined reduction of factor O(1e9) for thermal noise events
-      // How many signal events will be left?
-      // here we go!
-
-      // STEP 1 deltaPhiSect      
+      // Step 2: cut phi-sector angle triggers
       const double aftForeOffset = 45; // in cc it's
       const double bin0PhiDeg = -aftForeOffset + DEGREES_IN_CIRCLE;
       double angleThroughPhiSectors = recoPhiDeg - bin0PhiDeg;
@@ -458,10 +449,13 @@ int main(int argc, char *argv[])
 
       Double_t solarPhiDeg = eventSummary->sun.phi;
       Double_t solarThetaDeg = -1*eventSummary->sun.theta;
-      
+
       Double_t deltaSolarPhiDeg = RootTools::getDeltaAngleDeg(recoPhiDeg, solarPhiDeg);
       solarPhiDeg = solarPhiDeg < 0 ? solarPhiDeg + 360 : solarPhiDeg;
       Double_t deltaSolarThetaDeg = recoThetaDeg - solarThetaDeg;
+
+      // std::cerr << recoThetaDeg << "\t" << solarThetaDeg << "\t" << deltaSolarThetaDeg << "\t";
+      // std::cerr << recoPhiDeg << "\t" << solarPhiDeg << "\t" << deltaSolarPhiDeg << std::endl;      
 
 
       // relative sun position
@@ -484,10 +478,9 @@ int main(int argc, char *argv[])
       hDeltaSolarPhiDegVsPhi->Fill(solarPhiDeg, deltaSolarPhiDeg);
       hDeltaSolarPhiDegVsTimeOfDay->Fill(pat->timeOfDay/1000, deltaSolarPhiDeg);
 
-
       if(TMath::Abs(deltaSolarPhiDeg) < deltaSolarPhiDegCut &&
 	 TMath::Abs(deltaSolarThetaDeg) < deltaSolarThetaCut){
-	hImagePeakHilbertPeakSunPhiTheta->Fill(imagePeak, hilbertPeak);      
+	hImagePeakHilbertPeakSunPhiTheta->Fill(imagePeak, hilbertPeak);
       }
       else if(TMath::Abs(deltaSolarPhiDeg) < deltaSolarPhiDegCut){
 	hImagePeakHilbertPeakSunPhi->Fill(imagePeak, hilbertPeak);	  
