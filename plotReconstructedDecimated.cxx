@@ -51,8 +51,10 @@ int main(int argc, char *argv[])
   const double cutImage = 0;
   
   const double ratioCutHigh = 2.8; //9999;
-  const double ratioCutLow = 1; //9999;
+  const double ratioCutLow = 1.14; //9999;
 
+  const int maxAbsDeltaPhiSect = 1;
+  
   const bool useTimeCut = true; //true; //false;
   const int numGoodTimes = 1;
   UInt_t goodTimesStart[numGoodTimes] = {1419400000}; //{1419100000};
@@ -312,11 +314,11 @@ int main(int argc, char *argv[])
 						numBinsPhi, -10, 10);
 
 
-  TH2D* hDeltaSolarPhiDegVsDeltaSolarPhiDeg = new TH2D("hDeltaSolarPhiDegVsDeltaSolarPhiDeg",
+  TH2D* hDeltaSolarPhiDegVsDeltaSolarThetaDeg = new TH2D("hDeltaSolarPhiDegVsDeltaSolarThetaDeg",
 						       "#delta#theta_{sun} vs. #delta#phi_{sun}; #delta#phi_{sun} (Degrees); #delta#theta_{sun} (Degrees); Events per bin",
 						       numBinsPhi, -180, 180,
 						       2*numBinsTheta, -180, 180);
-  TProfile2D* pImagePeakVsDeltaSolarPhiDegVsDeltaSolarPhiDeg = new TProfile2D("pImagePeakVsDeltaSolarPhiDegVsDeltaSolarPhiDeg",
+  TProfile2D* pImagePeakVsDeltaSolarPhiDegVsDeltaSolarThetaDeg = new TProfile2D("pImagePeakVsDeltaSolarPhiDegVsDeltaSolarThetaDeg",
 									      "Profile of Image Peak vs. #delta#theta_{sun} vs. #delta#phi_{sun}; #delta#phi_{sun} (Degrees); #delta#theta_{sun} (Degrees); Image peak (no units)",
 									      numBinsPhi, -180, 180,
 									      2*numBinsTheta, -180, 180);
@@ -390,12 +392,8 @@ int main(int argc, char *argv[])
 
 
       
-      // Step 0:
       // Get event info
       const int peakInd = 0;
-      
-      Double_t solarPhiDeg = eventSummary->sun.phi;
-      Double_t solarThetaDeg = -1*eventSummary->sun.theta;
       
       Double_t recoPhiDeg = eventSummary->peak[pol][peakInd].phi;
       Double_t recoThetaDeg = eventSummary->peak[pol][peakInd].theta;
@@ -429,7 +427,6 @@ int main(int argc, char *argv[])
 	  }
 	}
       }
-      const int maxAbsDeltaPhiSect = 1;
       if(TMath::Abs(deltaPhiSect) > maxAbsDeltaPhiSect){
 	p.inc(entry, maxEntry);
 	continue;	
@@ -441,7 +438,8 @@ int main(int argc, char *argv[])
       
       
 
-      
+      Double_t solarPhiDeg = eventSummary->sun.phi;
+      Double_t solarThetaDeg = -1*eventSummary->sun.theta;           
 
       Double_t deltaSolarPhiDeg = RootTools::getDeltaAngleDeg(recoPhiDeg, solarPhiDeg);
       solarPhiDeg = solarPhiDeg < 0 ? solarPhiDeg + 360 : solarPhiDeg;
@@ -450,34 +448,30 @@ int main(int argc, char *argv[])
       hDeltaSolarPhiDeg[peakInd]->Fill(deltaSolarThetaDeg);
       hDeltaSolarThetaDeg[peakInd]->Fill(deltaSolarPhiDeg);
 
-      pImagePeakVsDeltaSolarPhiDegVsDeltaSolarPhiDeg->Fill(deltaSolarPhiDeg,
-							   deltaSolarThetaDeg,
-							   imagePeak);
+      pImagePeakVsDeltaSolarPhiDegVsDeltaSolarThetaDeg->Fill(deltaSolarPhiDeg,
+							     deltaSolarThetaDeg,
+							     imagePeak);
       pImagePeakVsDeltaSolarPhiDegVsSunTheta->Fill(solarThetaDeg,
 						   deltaSolarThetaDeg,
 						   imagePeak);
-	
+
+      hDeltaSolarThetaDegVsTheta->Fill(solarThetaDeg, deltaSolarThetaDeg);
+      hDeltaSolarThetaDegVsPhi->Fill(solarPhiDeg, deltaSolarThetaDeg);
+      hDeltaSolarThetaDegVsTimeOfDay->Fill(pat->timeOfDay/1000, deltaSolarThetaDeg);
+      hDeltaSolarPhiDegVsTheta->Fill(solarThetaDeg, deltaSolarPhiDeg);
+      hDeltaSolarPhiDegVsPhi->Fill(solarPhiDeg, deltaSolarPhiDeg);
+      hDeltaSolarPhiDegVsTimeOfDay->Fill(pat->timeOfDay/1000, deltaSolarPhiDeg);
+
+      hDeltaSolarPhiDegVsDeltaSolarThetaDeg->Fill(deltaSolarPhiDeg, deltaSolarThetaDeg);
+      
       if(TMath::Abs(deltaSolarPhiDeg) < deltaSolarPhiDegCut &&
 	 TMath::Abs(deltaSolarThetaDeg) < deltaSolarThetaCut){
-	  
-	hDeltaSolarThetaDegVsTheta->Fill(solarThetaDeg, deltaSolarThetaDeg);	  
-	hDeltaSolarThetaDegVsPhi->Fill(solarPhiDeg, deltaSolarThetaDeg);
-	hDeltaSolarThetaDegVsTimeOfDay->Fill(pat->timeOfDay/1000, deltaSolarThetaDeg);
-	hDeltaSolarPhiDegVsTheta->Fill(solarThetaDeg, deltaSolarPhiDeg);
-	hDeltaSolarPhiDegVsPhi->Fill(solarPhiDeg, deltaSolarPhiDeg);
-	hDeltaSolarPhiDegVsTimeOfDay->Fill(pat->timeOfDay/1000, deltaSolarPhiDeg);
-
-	hDeltaSolarPhiDegVsDeltaSolarPhiDeg->Fill(deltaSolarPhiDeg, deltaSolarThetaDeg);
-	hImagePeakHilbertPeakSunPhiTheta->Fill(imagePeak, hilbertPeak);
+	hImagePeakHilbertPeakSunPhiTheta->Fill(imagePeak, hilbertPeak);      
       }
       else if(TMath::Abs(deltaSolarPhiDeg) < deltaSolarPhiDegCut){
 	hImagePeakHilbertPeakSunPhi->Fill(imagePeak, hilbertPeak);	  
       }
-
-      recoPhiDeg = eventSummary->peak[pol][peakInd].phi;
-      recoThetaDeg = eventSummary->peak[pol][peakInd].theta;
-      imagePeak = eventSummary->peak[pol][peakInd].value;
-      hilbertPeak = eventSummary->coherent[pol][peakInd].peakHilbert;
+      
 
 
       if(imagePeak < cutImage || hilbertPeak < cutHilbert){
