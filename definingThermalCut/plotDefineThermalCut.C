@@ -23,6 +23,9 @@ void Pal2();
 
 void plotDefineThermalCut(){  
 
+
+  const double desiredBackgroundAcceptance = 2.5e-8; //1e-7;
+  
   TFile* f = OutputConvention::getFile("defineThermalCutPlots*.root");
   TTree* t = (TTree*) f->Get("TestTree");
   t->Show(0);
@@ -36,7 +39,7 @@ void plotDefineThermalCut(){
 
 
   
-  TH1D* hSignal = new TH1D("hSignal", "Signal", nBinsFine, minFischer, maxFischer);
+  TH1D* hSignal = new TH1D("hSignal", "Signal and Background Acceptance as a function of w_{0}; w_{0} (no units); Fraction of population above w_{0}", nBinsFine, minFischer, maxFischer);
 
   hSignal->Sumw2();
   t->Draw("Fisher>>hSignal", isSignal, "goff");
@@ -71,50 +74,55 @@ void plotDefineThermalCut(){
   hSignalInt->Draw();
   hBackgroundInt->Draw("same");
   c2->SetLogy(1);
-  hSignalInt->SetMinimum(1e-8);
-  TF1* fBackgroundFit = new TF1("backgroundFit", "exp([constant]+[slope]*x)", -5, 5);
-  fBackgroundFit->SetLineColor(kBlue);  
-  hBackgroundInt->Fit(fBackgroundFit,"", "", -1.6, -1.4);
+  hSignalInt->SetMinimum(1e-9);
+  TF1* fBackgroundFit = new TF1("fBackgroundFit", "exp([constant]+[slope]*x)", -2, 1);
+  fBackgroundFit->SetNpx(1000);
+  fBackgroundFit->SetLineStyle(3);
+  fBackgroundFit->SetLineColor(kBlue);
+  const double startFit = -1.6;
+  const double endFit = -1.25;  
+  hBackgroundInt->Fit(fBackgroundFit,"N", "", startFit, endFit);
   fBackgroundFit->Draw("lsame");
+
+  std::cerr << "Fitting range of function..." << std::endl;
+  std::cerr << fBackgroundFit->Eval(startFit) << "\t" << fBackgroundFit->Eval(endFit) << std::endl;
   
 
 
-
   // so now we grab the params and invert this mother
-  Double_t p0 = fBackgroundFit->GetParameter(0);
-  Double_t p1 = fBackgroundFit->GetParameter(1);
+  Double_t p0 = fBackgroundFit->GetParameter("constant");
+  Double_t p1 = fBackgroundFit->GetParameter("slope");
 
   // y = exp(a + bx)
   // ln(y)  = a + bx
   // (ln(y) - a)/b = x
   // want x for y = 1e-7ish, maybe
-  const double desiredBackgroundAcceptance = 1e-7;
   double cutValFisher = (TMath::Log(desiredBackgroundAcceptance) - p0)/p1;
-  std::cerr << "cutValFisher = " << cutValFisher << std::endl;
-
+  std::cerr << "cutValFisher = " << cutValFisher
+	    << "\tdesiredBackgroundAcceptance = " << desiredBackgroundAcceptance << std::endl;
   TGraph* grCutLine = new TGraph();
   grCutLine->SetPoint(grCutLine->GetN(), cutValFisher, 1e-10);
   grCutLine->SetPoint(grCutLine->GetN(), cutValFisher, 10);
   grCutLine->SetLineColor(kMagenta);
   grCutLine->SetLineStyle(2);  
   grCutLine->Draw("lsame");
+  TGraph* grCutLine2 = new TGraph();
+  grCutLine2->SetPoint(grCutLine2->GetN(), minFischer, desiredBackgroundAcceptance);
+  grCutLine2->SetPoint(grCutLine2->GetN(), maxFischer, desiredBackgroundAcceptance);
+  grCutLine2->SetLineColor(kMagenta);
+  grCutLine2->SetLineStyle(2);  
+  grCutLine2->Draw("lsame");
+
+  TLegend* l2 = new TLegend(0.8, 0.8, 1 , 1);
+  l2->AddEntry(hSignal, "WAIS pulses", "l");
+  l2->AddEntry(hBackground, "Min Bias", "l");
+  l2->AddEntry(fBackgroundFit, "Exponential fit to background", "l");
+  l2->AddEntry(grCutLine, TString::Format("w_{0} at %.2e background acceptance", desiredBackgroundAcceptance), "l");
+  l2->Draw();
   
+
+  return;
   
-  const int numContours = 30;
-  gStyle->SetNumberContours(numContours);
-  // std::vector<double> theContours(numContours);
-
-  auto c0 = new TCanvas();
-  c0->Divide(2);
-
-
-  c0->cd(1);  
-  // const int nCont= 100;
-  // Double_t theContourLevels[nCont];  
-  // for(int i=0; i < nCont; i++){
-  //   theContourLevels[i] = double(i+1)/nCont;
-  // }
-  // hSignal2->SetContour(nCont, theContourLevels);
   
   hSignal2->SetMarkerSize(1);
   hSignal2->Scale(1./hSignal2->Integral());
@@ -126,111 +134,88 @@ void plotDefineThermalCut(){
   hBackground2->GetXaxis()->SetRangeUser(0, 0.5);
   hBackground2->GetYaxis()->SetRangeUser(0, 200);
 
+  const int numCont = 40;
+  gStyle->SetNumberContours(numCont);
+  TCanvas *c3  = new TCanvas("fancyCan", "fancyCan", 1500, 800);
 
-
-
-  gStyle->SetNumberContours(40);
-  TCanvas *c3  = new TCanvas("c3", "fancyCan", 1500, 800);
-
-  TPad *pad1 = new TPad("pad1", "The pad 80% of the height",0, 0, 0.5, 1, 0);  
-  TPad *pad2 = new TPad("pad2", "The pad 20% of the height",0.5, 0, 1, 1, 0);
+  TPad *pad1 = new TPad("pad1", "",0, 0, 0.5, 1, 0);  
+  TPad *pad2 = new TPad("pad2", "",0.5, 0, 1, 1, 0);
   pad1->Draw();
   pad2->Draw();
-  // pad2->SetLogz(1);  
-  // c3->Divide(2,1);
-  // TF2 *f3 = new TF2("f3","0.1+(1-(x-2)*(x-2))*(1-(y-2)*(y-2))",1,3,1,3);
-  // f3->SetLineWidth(1);
-  // f3->SetLineColor(kBlack);
-
-  // c3->cd(2);
   pad2->cd();
 
-  
-  hBackground2->Draw("cont z");
-  double zmax = hBackground2->GetMaximum();
-  double zmin = hBackground2->GetMinimum();  
-  
-  pad2->SetLogz(1);
+  pad2->SetLogz(1);  
+  hBackground2->Draw("colz");
+
   hBackground2->SetTitle(";;;Min Bias events per bin");
   hSignal2->SetTitle("Rotated Cross-Correlation; Image Peak (no units); Hilbert Peak (mV); WAIS events per bin");
-  // hSignal2->GetXaxis()->SetTitle("Image Peak (no units)");
-  // hSignal2->GetYaxis()->SetTitle("Hilbert Peak (mV)");
-  // hSignal2->GetZaxis()->SetTitle("Events per bin");  
-  // f3->Draw("surf1");
   TExec *ex1 = new TExec("ex1","Pal1();");
   ex1->Draw();
+  
   hBackground2->Draw("cont z list same");
-  gPad->Update();
+
+  // hBackground2->Draw("cont z list same");  
+  // return;
+  
+  gPad->Update();  
   TPaletteAxis *palette = (TPaletteAxis*)hBackground2->GetListOfFunctions()->FindObject("palette");
-  // palette->SetX1NDC(0);
-  // palette->SetX2NDC(1);
-  // palette->SetY1NDC(0);
-  // palette->SetY2NDC(1);  
-  // palette->SetTitleSize(100);
-  // // palette->SetLabelSize(100);
-  // gPad->Update();
+  TObjArray *contours = (TObjArray*) gROOT->GetListOfSpecials()->FindObject("contours");
 
   std::vector<std::vector<TGraph*> > grs;  
-  TObjArray *contours = (TObjArray*) gROOT->GetListOfSpecials()->FindObject("contours");
-  // std::cout << contours << std::endl;
-  Int_t ncontours     = contours->GetSize();
+  Int_t ncontours = contours->GetSize();
   
   for(int i=0; i < ncontours; i++){
     TList *list         = (TList*)contours->At(i);
     grs.push_back(std::vector<TGraph*>(0));
 
-    // std::cerr << i << "\t" << ncontours << "\t" << theContours[i] << "\t" << hSignal->GetContourLevel(i) << std::endl;
     
     TGraph* gr = (TGraph*)list->First();    
     for(int j=0; j < list->GetSize(); j++){
-      // std::cout << i << "\t" << j << "\t" << gr << std::endl;
     
       TGraph* gr = (TGraph*) list->At(j);
       TGraph* gr2 = (TGraph*) gr->Clone();
 
-      // gr2->SetLineColor(gStyle->GetColorPalette(Int_t(255.*(254-i)/(ncontours))));
-      // gr2->SetLineColor(gStyle->GetColorPalette(Int_t(255.*(i)/(ncontours))));
 
       Double_t val = hBackground2->GetContourLevel(i);
       Int_t col = palette->GetValueColor(val);
       gr2->SetLineColor(col);      
-      // gr2->SetLineColor(gStyle->GetColorPalette(Int_t(i/(ncontours))));            
-      // gr2->SetLineColor(gStyle->GetColorPalette(kCool));    
 
-      // gr2->SetLineColor(gr->GetLineColor());
       
       grs.back().push_back(gr2);
-      gr = (TGraph*)list->After(gr); // Get Next graph
     }
   }
   gPad->Update();
   
 
   pad1->cd();
-  // c3->cd(1);
-  // f3->Draw("surf1");
   hSignal2->Draw("colz");  
   TExec *ex2 = new TExec("ex2","Pal2();");
   ex2->Draw();
   hSignal2->Draw("colzsame");    
-  // f3->Draw("surf1 same");
 
+  UInt_t theN = grs.size();
+  std::vector<Color_t> theCols(theN);
+  
+  for(Int_t i=0; i < theN; i++){
+    // std::cout << i << "\t" << theN - i - 1 << "\t" << grs.at(theN - i - 1).size() <<  std::endl;
+    theCols.at(i) = grs.at(theN - i - 1).at(0)->GetLineColor();
+  }  
   Int_t drawEvery = 1;
   for(UInt_t i=0; i < grs.size(); i++){
     if((i % drawEvery) == 0){
       for(UInt_t j=0; j < grs.at(i).size(); j++){
+	// if(j==0){std::cout << i << std::endl;}
+	
+  	grs.at(i).at(j)->SetLineColor(theCols.at(i));
   	grs.at(i).at(j)->Draw("lsame");
       }
     }
   }
   
-  
-  // f3->Draw("surf1 same");
   gPad->Update();
 
 
   
-
   
   
   TF1* fLine = new TF1("fLine", "[0]*x + [1]", 0, 1);
@@ -244,12 +229,11 @@ void plotDefineThermalCut(){
   // double intercept = -cutValFisher/weights[2];  
   fLine->SetParameter(0, grad);
   fLine->SetParameter(1, intercept);
-
+  TLegend* lFancyCan = new TLegend(0.8, 0.1, 1, 0.3);  
+  lFancyCan->AddEntry(fLine, TString::Format("Fisher discriminant extrapolated to accept %.2e Min Bias events", desiredBackgroundAcceptance), "l");  
   
   fLine->Draw("lsame");
-  return;
-  
-  
+  lFancyCan->Draw();
   
   
   auto c1 = new TCanvas();
