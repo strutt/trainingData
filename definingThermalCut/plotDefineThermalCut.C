@@ -131,13 +131,10 @@ void plotDefineThermalCut(){
 
   gStyle->SetNumberContours(40);
   TCanvas *c3  = new TCanvas("c3", "fancyCan", 1500, 800);
-  // TPad *pad1 = new TPad("pad1", "The pad 80% of the height",0.0,0.2,1.0,1.0,0);
-  // TPad *pad2 = new TPad("pad2", "The pad 20% of the height",0.0,0.0,1.0,0.2,0);
 
   TPad *pad1 = new TPad("pad1", "The pad 80% of the height",0, 0, 0.5, 1, 0);  
   TPad *pad2 = new TPad("pad2", "The pad 20% of the height",0.5, 0, 1, 1, 0);
   pad1->Draw();
-  // pad1->SetLogz(1);    
   pad2->Draw();
   // pad2->SetLogz(1);  
   // c3->Divide(2,1);
@@ -147,8 +144,12 @@ void plotDefineThermalCut(){
 
   // c3->cd(2);
   pad2->cd();
-    
+
+  
   hBackground2->Draw("cont z");
+  double zmax = hBackground2->GetMaximum();
+  double zmin = hBackground2->GetMinimum();  
+  
   pad2->SetLogz(1);
   hBackground2->SetTitle(";;;Min Bias events per bin");
   hSignal2->SetTitle("Rotated Cross-Correlation; Image Peak (no units); Hilbert Peak (mV); WAIS events per bin");
@@ -158,9 +159,9 @@ void plotDefineThermalCut(){
   // f3->Draw("surf1");
   TExec *ex1 = new TExec("ex1","Pal1();");
   ex1->Draw();
-  hBackground2->Draw("cont z list same ah");
+  hBackground2->Draw("cont z list same");
   gPad->Update();
-  // TPaletteAxis *palette = (TPaletteAxis*)hBackground2->GetListOfFunctions()->FindObject("palette");
+  TPaletteAxis *palette = (TPaletteAxis*)hBackground2->GetListOfFunctions()->FindObject("palette");
   // palette->SetX1NDC(0);
   // palette->SetX2NDC(1);
   // palette->SetY1NDC(0);
@@ -187,7 +188,13 @@ void plotDefineThermalCut(){
       TGraph* gr = (TGraph*) list->At(j);
       TGraph* gr2 = (TGraph*) gr->Clone();
 
-      gr2->SetLineColor(gStyle->GetColorPalette(Int_t(255.*(254-i)/(ncontours))));
+      // gr2->SetLineColor(gStyle->GetColorPalette(Int_t(255.*(254-i)/(ncontours))));
+      // gr2->SetLineColor(gStyle->GetColorPalette(Int_t(255.*(i)/(ncontours))));
+
+      Double_t val = hBackground2->GetContourLevel(i);
+      Int_t col = palette->GetValueColor(val);
+      gr2->SetLineColor(col);      
+      // gr2->SetLineColor(gStyle->GetColorPalette(Int_t(i/(ncontours))));            
       // gr2->SetLineColor(gStyle->GetColorPalette(kCool));    
 
       // gr2->SetLineColor(gr->GetLineColor());
