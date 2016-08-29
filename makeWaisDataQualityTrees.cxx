@@ -113,6 +113,24 @@ int main(int argc, char *argv[]){
 			  TString::Format("numPoints[%d][%d]/S",
 					  NUM_POL, NUM_SEAVEYS));
   
+  Double_t power[NUM_POL][NUM_SEAVEYS];
+  dataQualityTree->Branch("power",
+			  power,
+			  TString::Format("power[%d][%d]/D",
+					  NUM_POL, NUM_SEAVEYS));
+
+  Double_t maxVolts[NUM_POL][NUM_SEAVEYS];
+  dataQualityTree->Branch("maxVolts",
+			  maxVolts,
+			  TString::Format("maxVolts[%d][%d]/D",
+					  NUM_POL, NUM_SEAVEYS));
+
+  Double_t minVolts[NUM_POL][NUM_SEAVEYS];
+  dataQualityTree->Branch("minVolts",
+			  minVolts,
+			  TString::Format("minVolts[%d][%d]/D",
+					  NUM_POL, NUM_SEAVEYS));
+
   Long64_t nEntries = headChain->GetEntries();
   Long64_t maxEntry = 0; //2500;
   Long64_t startEntry = 0;
@@ -155,10 +173,21 @@ int main(int argc, char *argv[]){
 	    RootTools::getLocalMaxToMin(gr, maxY, maxX, minY, minX);
 
 	    peakToPeak[pol][ant] = maxY - minY;
+	    maxVolts[pol][ant] = -9999;
+	    minVolts[pol][ant] = 9999;
+	    power[pol][ant] = 0;
+	    for(int samp=0; samp < numPoints[pol][ant]; samp++){
+	      Double_t v = gr->GetY()[samp];
+	      power[pol][ant] += v*v*gr->GetX()[samp];
+	      if(v > maxVolts[pol][ant]){
+		maxVolts[pol][ant] = v;
+	      }
+	      if(v < minVolts[pol][ant]){
+		minVolts[pol][ant] = v;
+	      }
+	    }
 	  
-
 	    delete gr;
-
 	  }
 	}
 
