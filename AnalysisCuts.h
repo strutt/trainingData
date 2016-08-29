@@ -9,10 +9,13 @@
 #ifndef ANALYSISCUTS_H
 #define ANALYSISCUTS_H
 
+#include "FancyFFTs.h"
 #include "AnitaConventions.h"
+#include "RawAnitaHeader.h"
 
-#include "CrossCorrelator.h"
-#include "RootTools.h"
+
+
+// #include "CrossCorrelator.h"
 
 /**
  * @namespace Analysis Cuts 
@@ -48,6 +51,12 @@ namespace AnalysisCuts{
   Status_t applySunPointingCut(Double_t deltaSolarPhiDeg);
 
 
+  // these variables all come from the output of things in the defineThermalCut subfolder
+  const int numFisherWeights = 3;
+  const Double_t fisherWeights[numFisherWeights] = {-2.81448, 15.7929, 0.00783315};
+  const Double_t fisherCutVal = -0.526251;
+  Status_t applyThermalBackgroundCut(Double_t imagePeak, Double_t hilbertPeak, Double_t& fisher);
+  
 
 };
 

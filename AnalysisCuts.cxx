@@ -99,3 +99,17 @@ AnalysisCuts::Status_t AnalysisCuts::applySunPointingCut(Double_t deltaSolarPhiD
 
 
 
+AnalysisCuts::Status_t AnalysisCuts::applyThermalBackgroundCut(Double_t imagePeak, Double_t hilbertPeak, Double_t& fisher){  
+  
+  Status_t status = kPass;
+  fisher = fisherWeights[0] + imagePeak*fisherWeights[1] + hilbertPeak*fisherWeights[2];
+  
+  if(fisher < fisherCutVal){
+    status = kFail;
+  }
+  
+  return status;
+}
+
+
+
