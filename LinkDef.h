@@ -4,7 +4,8 @@
 #pragma link off all classes;
 #pragma link off all functions;
 
-#pragma link C++ namespace AnalysisCuts+;
-#pragma link C++ enum AnalysisCuts::Status_t+;
+#pragma link C++ class AnitaClusterer+;
+#pragma link C++ class AnitaClusterer::Point+;
+#pragma link C++ class AnitaClusterer::Cluster+;
 #endif
 

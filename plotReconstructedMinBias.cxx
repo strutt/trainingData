@@ -41,8 +41,11 @@ int main(int argc, char *argv[])
     return 1;
   }
   
-  const Int_t firstRun = 204; //atoi(argv[1]);
-  const Int_t lastRun = 281;
+  const Int_t firstRun = 130; //atoi(argv[1]);
+  const Int_t lastRun = 434;
+  // const Int_t firstRun = 204; //atoi(argv[1]);
+  // const Int_t lastRun = 281;
+  
   std::cout << firstRun << "\t" << lastRun << std::endl;
   const int cutStep = atoi(argv[1]);  
   std::cout << "cutStep = " << cutStep << std::endl;
@@ -56,7 +59,7 @@ int main(int argc, char *argv[])
   const double deltaSolarThetaClose = 5;
 
   
-  const bool useTimeCut = true;
+  const bool useTimeCut = false; //true;
   const int numGoodTimes = 1;
   UInt_t goodTimesStart[numGoodTimes] = {1419100000};
   UInt_t goodTimesEnd[numGoodTimes] = {1419500000};
@@ -97,7 +100,7 @@ int main(int argc, char *argv[])
     // fileName = TString::Format("reconstructMinBiasPlots_%d_*.root", run);    
     eventSummaryChain->Add(fileName);
 
-    fileName = TString::Format("filter260-370-400-762/makeMinBiasDataQualityTreesPlots_%d_*.root", run);
+    fileName = TString::Format("filter260-370-400-762/makeWaisDataQualityTreesPlots_%d_*.root", run);
     dataQualityChain->Add(fileName);
     
   }
@@ -163,7 +166,7 @@ int main(int argc, char *argv[])
   const Int_t numImagePeakBins = 1024;
   const Int_t numHilbertPeakBins = 1024;
   const Double_t maxHilbertPeak = 2048;  
-
+   
   
   // const int numPeaks = 1;
   const int numPeaks = 1;
@@ -213,6 +216,12 @@ int main(int argc, char *argv[])
 						  "Maximum peak-to-peak ratio between top and bottom rings; Ratio of peak-to-peak value (no units); Number of events",
 						  1024, 0, 10);
   
+
+  TH2D* hImagePeak1Peak2 = new TH2D("hImagePeak1Peak2",
+				    "Image peak 1 vs. Image Peak 2 ",
+				    numImagePeakBins, 0, 1,
+				    numImagePeakBins, 0, 1);
+
   
   TH2D* hImagePeakHilbertPeak = new TH2D("hImagePeakHilbertPeak",
 					 "Image peak vs. Hilbert Peak ",
@@ -456,6 +465,26 @@ int main(int argc, char *argv[])
 
 
 
+      
+      
+
+
+      AnalysisCuts::Status_t thermalCut;
+      Double_t fisher;
+      thermalCut = AnalysisCuts::applyThermalBackgroundCut(imagePeak, hilbertPeak, fisher);
+      if(cutStep>=4 && thermalCut==AnalysisCuts::kFail){
+	p.inc(entry, maxEntry);	
+	continue;
+      }
+
+      if(imagePeak < 0.075 || (imagePeak < 0.3 && hilbertPeak > 200)){
+      	std::cout << std::endl << header->run << "\t" << header->eventNumber << "\t" << imagePeak << "\t" << hilbertPeak << "\t" << fisher << std::endl;
+      }
+      // std::cout << std::endl << header->eventNumber << "\t" << header->run << "\t"
+      // 		<< imagePeak << "\t" << hilbertPeak << "\t" << fisher << std::endl;
+      // std::cerr << maxRatio << "\t" << deltaSolarPhiDeg << "\t" << deltaPhiSect << std::endl;
+      
+
 
 
       
@@ -489,6 +518,7 @@ int main(int argc, char *argv[])
 	std::cerr << recoPhiDeg << "\t" << pat->heading << std::endl;
       }
 
+      hImagePeak1Peak2->Fill(imagePeak, eventSummary->peak[pol][peakInd+1].value);
 
       hThetaDeg->Fill(recoThetaDeg);
 

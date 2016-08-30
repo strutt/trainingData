@@ -41,8 +41,11 @@ int main(int argc, char *argv[])
     return 1;
   }
   
-  const Int_t firstRun = 204; //atoi(argv[1]);
-  const Int_t lastRun = 281;
+  const Int_t firstRun = 130; //atoi(argv[1]);
+  const Int_t lastRun = 434;
+  // const Int_t firstRun = 204; //atoi(argv[1]);
+  // const Int_t lastRun = 281;
+  
   std::cout << firstRun << "\t" << lastRun << std::endl;
   const int cutStep = atoi(argv[1]);  
   std::cout << "cutStep = " << cutStep << std::endl;
@@ -54,7 +57,7 @@ int main(int argc, char *argv[])
   const double deltaSolarPhiDegClose = 20; 
   const double deltaSolarThetaClose = 5;
   
-  const bool useTimeCut = true;
+  const bool useTimeCut = false; //true;
   const int numGoodTimes = 1;
   UInt_t goodTimesStart[numGoodTimes] = {1419100000};
   UInt_t goodTimesEnd[numGoodTimes] = {1419500000};
@@ -217,7 +220,11 @@ int main(int argc, char *argv[])
   TH1D* hMaxBottomToTopPeakToPeakRatio = new TH1D("hBottomToTopPeakToPeakRatio",
 						  "Maximum peak-to-peak ratio between top and bottom rings; Ratio of peak-to-peak value (no units); Number of events",
 						  1024, 0, 10);
-  
+
+  TH2D* hImagePeak1Peak2 = new TH2D("hImagePeak1Peak2",
+				    "Image peak 1 vs. Image Peak 2 ",
+				    numImagePeakBins, 0, 1,
+				    numImagePeakBins, 0, 1);  
   
   TH2D* hImagePeakHilbertPeak = new TH2D("hImagePeakHilbertPeak",
 					 "Image peak vs. Hilbert Peak ",
@@ -460,8 +467,17 @@ int main(int argc, char *argv[])
 
 
 
+      AnalysisCuts::Status_t thermalCut;
+      Double_t fisher;
+      thermalCut = AnalysisCuts::applyThermalBackgroundCut(imagePeak, hilbertPeak, fisher);
+      if(cutStep>=4 && thermalCut==AnalysisCuts::kFail){
+	p.inc(entry, maxEntry);	
+	continue;
+      }
 
-      
+      if(imagePeak < 0.075 || (imagePeak < 0.3 && hilbertPeak > 200)){
+      	std::cout << std::endl << header->run << "\t" << header->eventNumber << "\t" << imagePeak << "\t" << hilbertPeak << "\t" << fisher << std::endl;
+      }
       
       
 
@@ -485,6 +501,7 @@ int main(int argc, char *argv[])
       }
 
 
+
       Double_t directionWrtNorth = RootTools::getDeltaAngleDeg(pat->heading, recoPhiDeg);
 
       directionWrtNorth = directionWrtNorth < -180 ? directionWrtNorth + 360 : directionWrtNorth;
@@ -495,6 +512,8 @@ int main(int argc, char *argv[])
       if(TMath::Abs(directionWrtNorth) > maxDirWrtNorth){
 	std::cerr << recoPhiDeg << "\t" << pat->heading << std::endl;
       }
+
+      hImagePeak1Peak2->Fill(imagePeak, eventSummary->peak[pol][peakInd+1].value);
 
 
       hThetaDeg->Fill(recoThetaDeg);

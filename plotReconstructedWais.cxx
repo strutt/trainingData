@@ -208,6 +208,10 @@ int main(int argc, char *argv[])
 						  "Maximum peak-to-peak ratio between top and bottom rings; Ratio of peak-to-peak value (no units); Number of events",
 						  1024, 0, 10);
   
+  TH2D* hImagePeak1Peak2 = new TH2D("hImagePeak1Peak2",
+				    "Image peak 1 vs. Image Peak 2 ",
+				    numImagePeakBins, 0, 1,
+				    numImagePeakBins, 0, 1);
   
   TH2D* hImagePeakHilbertPeak = new TH2D("hImagePeakHilbertPeak",
 					 "Image peak vs. Hilbert Peak ",
@@ -461,6 +465,21 @@ int main(int argc, char *argv[])
 
 
 
+      AnalysisCuts::Status_t thermalCut;
+      Double_t fisher;
+      thermalCut = AnalysisCuts::applyThermalBackgroundCut(imagePeak, hilbertPeak, fisher);
+      if(cutStep>=4 && thermalCut==AnalysisCuts::kFail){
+	p.inc(entry, maxEntry);	
+	continue;
+      }
+
+      // if(imagePeak < 0.05 && hilbertPeak < 50){
+      // std::cerr << "?????????????" << header->eventNumber << "\t" << header->run << "\t" << imagePeak << "\t" << hilbertPeak << "\t" << fisher << std::endl;
+      // }
+      
+
+
+
       
 
       
@@ -493,6 +512,8 @@ int main(int argc, char *argv[])
       if(TMath::Abs(directionWrtNorth) > maxDirWrtNorth){
 	std::cerr << recoPhiDeg << "\t" << pat->heading << std::endl;
       }
+
+      hImagePeak1Peak2->Fill(imagePeak, eventSummary->peak[pol][peakInd+1].value);      
 
       hThetaDeg->Fill(recoThetaDeg);
 

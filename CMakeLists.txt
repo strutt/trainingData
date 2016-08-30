@@ -54,34 +54,34 @@ message("ROOT_INCLUDE_DIRS is set to ${ROOT_INCLUDE_DIRS}")
 
 include_directories(${PROJECT_SOURCE_DIR} ${ROOT_INCLUDE_DIRS} ${PROJECT_SOURCE_DIR}/include ${ZLIB_INCLUDES} ${UTIL_INC_DIR})
 add_definitions(${ROOT_CXX_FLAGS} -DFFTW_64_BIT)
-link_directories(${UTIL_LIB_DIR} ./)
+link_directories(${UTIL_LIB_DIR} KMeansRex )
 
 
-#set(libname "AnalysisCuts")
-#set(DICTNAME G__${libname})
-#set(SOURCE_FILES AnalysisCuts.cxx)
-#set(HEADER_FILES AnalysisCuts.h)
-#ROOT_GENERATE_DICTIONARY(${DICTNAME} ${HEADER_FILES} LINKDEF LinkDef.h)
-#
-#
+set(libname "AnitaCluster")
+set(DICTNAME G__${libname})
+set(SOURCE_FILES AnitaClusterer.cxx)
+set(HEADER_FILES AnitaClusterer.h)
+ROOT_GENERATE_DICTIONARY(${DICTNAME} ${HEADER_FILES} LINKDEF LinkDef.h)
+
 ##---Create a shared library with geneated dictionary
-#add_library(${libname} SHARED ${SOURCE_FILES} ${DICTNAME}.cxx)
+add_library(${libname} SHARED ${SOURCE_FILES} ${DICTNAME}.cxx)
 #target_link_libraries(${libname} ${ZLIB_LIBRARIES} AnitaEvent AnitaAnalysisTools RootFftwWrapper ${ROOT_LIBRARIES} ${FFTW_LIBRARIES})
-#target_link_libraries(${libname} ${ZLIB_LIBRARIES} AnitaEvent AnitaAnalysisTools ${ROOT_LIBRARIES})
+target_link_libraries(${libname} ${ZLIB_LIBRARIES} AnitaEvent ${ROOT_LIBRARIES})
+#target_link_libraries(${libname} ${ZLIB_LIBRARIES})
 
 #set(ANITA_LIBS AnitaEvent AnitaAnalysis AnitaAnalysisTools AnitaCorrelator AnalysisCuts)
-set(ANITA_LIBS AnitaEvent AnitaAnalysis AnitaAnalysisTools AnitaCorrelator RootFftwWrapper)
+set(ANITA_LIBS AnitaEvent AnitaAnalysis AnitaAnalysisTools AnitaCorrelator RootFftwWrapper kmeansrex)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wshadow -Werror")
 
 
 # removed powerSpectra imagePeakHilbertPeak getWaisHeadings plotInitialDistributions project plotMinBiasDistributions makeDataQualityTrees makeMinBiasDataQualityTrees plotDataQuality templateSelfTriggeredBlast generateAngularResolutionTree reconstructPeaks waisDistributions)
-set(BINARIES reconstructDecimated reconstructMinBias reconstructWais plotReconstructedWais plotReconstructedMinBias plotReconstructedDecimated makeIndexedHeaderTrees examineCoherentlySummedWaveforms makeDecimatedDataQualityTrees makeWaisDataQualityTrees makeMinBiasDataQualityTrees makeThermalBackgroundTree makeSignalTree projection dummyProjection getRidOfTheseEvents)
+set(BINARIES reconstructDecimated reconstructMinBias reconstructWais plotReconstructedWais plotReconstructedMinBias plotReconstructedDecimated makeIndexedHeaderTrees examineCoherentlySummedWaveforms makeDecimatedDataQualityTrees makeWaisDataQualityTrees makeMinBiasDataQualityTrees makeThermalBackgroundTree makeSignalTree projection projectionDecimated dummyProjection getRidOfTheseEvents drawProjectionPlots clusteringBeta)
 
 FOREACH(binary ${BINARIES})
   MESSAGE(STATUS "Process file: ${binary}")
   add_executable(${binary} ${binary}.cxx)
-  target_link_libraries(${binary} ${ZLIB_LIBRARIES} ${ANITA_LIBS} ${ROOT_LIBRARIES} ${FFTW_LIBRARIES})  
+  target_link_libraries(${binary} ${ZLIB_LIBRARIES} ${ANITA_LIBS} ${ROOT_LIBRARIES} ${FFTW_LIBRARIES} ${libname})  
 ENDFOREACH(binary)
 
 

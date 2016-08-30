@@ -115,13 +115,13 @@ void plotDefineThermalCut(){
 
   TLegend* l2 = new TLegend(0.8, 0.8, 1 , 1);
   l2->AddEntry(hSignal, "WAIS pulses", "l");
-  l2->AddEntry(hBackground, "Min Bias", "l");
+  l2->AddEntry(hBackground, "Min Bias (non-sun pointing events)", "l");
   l2->AddEntry(fBackgroundFit, "Exponential fit to background", "l");
   l2->AddEntry(grCutLine, TString::Format("w_{0} at %.2e background acceptance", desiredBackgroundAcceptance), "l");
   l2->Draw();
   
 
-  return;
+  // return;
   
   
   hSignal2->SetMarkerSize(1);
@@ -229,6 +229,7 @@ void plotDefineThermalCut(){
   // double intercept = -cutValFisher/weights[2];  
   fLine->SetParameter(0, grad);
   fLine->SetParameter(1, intercept);
+  gStyle->SetOptFit(1);
   TLegend* lFancyCan = new TLegend(0.8, 0.1, 1, 0.3);  
   lFancyCan->AddEntry(fLine, TString::Format("Fisher discriminant extrapolated to accept %.2e Min Bias events", desiredBackgroundAcceptance), "l");  
   
