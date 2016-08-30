@@ -13,9 +13,53 @@
 
 #include "AnitaGeomTool.h"
 #include "TRandom3.h"
+#include "TGraph.h"
+#include "TTree.h"
+#include "TFile.h"
+
+
+
+#include "assert.h"
+
 
 #define nDim 3
 //#include "KMeansRex/src/KMeansRexCore.h"
+
+
+
+
+
+//--------------------------------------------------------------------------------------------------------
+/** 
+ * @class ClusteredAnitaEvent 
+ * @ Per-event output, perhaps a little gratuitous
+ */
+
+class ClusteredAnitaEvent{
+public:
+  UInt_t eventNumber;
+  Int_t run;
+  Double_t eventPosition[nDim]; // Event position cartesian (m)
+  Double_t eventLat; // latitude of position of event
+  Double_t eventLon; // longitude of position of event
+  Double_t eventAlt; // altitude of posiiton of event
+
+  Double_t distanceToClusterCentroid; // distance (km) from point to centroid
+  Double_t errorToClusteredCentroid; // distance in some normalized error units TODO
+ 
+  Int_t inCluster; // ID of cluster
+  Int_t numEventsInCluster; // number of events in the cluster containing this event
+  Double_t clusterPosition[nDim]; // centroid of cluster cartesian (m)
+  Double_t clusterLat; // latitude of centroid of cluster
+  Double_t clusterLon; // longitude of centroid of cluster
+  Double_t clusterAlt; // altitude of centroid of cluster
+
+  Int_t numClusters; // Total number of clusters (maybe gratuitous)
+  Int_t numIterations; // number of loop iterations (maybe gratuitous)
+    
+};
+
+
 
 /**
  * @class AnitaCluster
@@ -31,7 +75,6 @@ public:
   //--------------------------------------------------------------------------------------------------------
   // Classes declared inside this class
   //--------------------------------------------------------------------------------------------------------
-
   
   //--------------------------------------------------------------------------------------------------------
   /** 
@@ -47,16 +90,30 @@ public:
     Point(Double_t latitude=0, Double_t longitude=0, Double_t altitude=0){
       AnitaGeomTool* geom = AnitaGeomTool::Instance();
       geom->getCartesianCoords(latitude,longitude,altitude, centre);
-      for(int dim=0; dim < nDim; dim++){
-	// m to km for easy output paring.
-	centre[dim]*=1e-3; // just remember to undo this!
-      }
-      inCluster = -1;      
-      error = 0;      
+      inCluster = -1;
+      error = 0;
     }
     virtual ~Point(){ ;}
     ClassDef(Point, 1)    
   };
+
+
+  // //--------------------------------------------------------------------------------------------------------
+  // /** 
+  //  * @class UncertainPoint
+  //  * @ Position on the contitent with an error ellipse in Cartesian Coordinates
+  //  */
+  // class UncertainPoint : public Point{
+  // public:
+  //   Double_t posThetaError[nDim];
+  //   Double_t negThetaError[nDim];
+  //   Double_t posPhiError[nDim];
+  //   Double_t negPhiError[nDim];
+  //   virtual ~UncertainPoint(){ ;}
+  //   ClassDef(Point, 1);
+  // }; 
+
+  
 
   //--------------------------------------------------------------------------------------------------------
   /** 
@@ -73,12 +130,15 @@ public:
       totalError = 0;
     }
 
-    Cluster(Point seedPoint){
+    explicit Cluster(const Point& seedPoint) {
+      numEvents = 1;
+      totalError = 0;      
       for(int dim=0; dim < nDim; dim++){
 	centre[dim] = seedPoint.centre[dim];
+	if(centre[dim] == 0){
+	  std::cerr << "???????????" << std::endl;
+	}
       }
-      numEvents = 1;
-      totalError = 0;
     }
     
     Double_t centre[nDim];
@@ -86,16 +146,21 @@ public:
     // Mean "distance" of all points to cluster centre (a cluster figure of merit)
     // this is what the k-means++ algorithm should minimize
     Double_t totalError;
+    
     virtual ~Cluster(){ ;}    
     ClassDef(Cluster, 1)
   };
 
 
+  
   AnitaClusterer(Int_t nClusters, Int_t numIterations, Int_t approxNumPoints=0);
-  size_t addPoint(Double_t latitude, Double_t longitude, Double_t altitude, UInt_t eventNumber);
+  size_t addPoint(Double_t latitude, Double_t longitude, Double_t altitude, Int_t run, UInt_t eventNumber);
   void kMeansCluster(Int_t iterationsPerCout=0);
 
-  Int_t seedVal;
+
+  TGraph* makeClusterSummaryTGraph(Int_t clusterInd);
+  TTree* makeClusterSummaryTree(TFile* fOut);
+  
   
 private:
 
@@ -111,8 +176,10 @@ private:
   const double minimalImprovement = 0.01;
   std::vector<Point> points; // only variables relevant to clustering
   std::vector<Cluster> clusters; // only variables relevant to clustering
+  std::vector<Int_t> seedPoints; // which points seeded which clusters
 
-  std::vector<UInt_t> eventNumbers; // keep track of these separately 
+  std::vector<UInt_t> eventNumbers; // keep track of these separately
+  std::vector<Int_t> runs; // keep track of these separately   
   Bool_t initialized;
   
 };
