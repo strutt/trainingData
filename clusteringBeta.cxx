@@ -102,8 +102,9 @@ int main(int argc, char *argv[])
   ProgressBar p(maxEntry-startEntry);
 
 
-  const int K = 150;  
-  AnitaClusterer clusterer(K, 100);
+  const int K = 150;
+  const int numIterations = 1;
+  AnitaClusterer clusterer(K, numIterations);
   
   for(Long64_t entry = startEntry; entry < maxEntry; entry++){    
     eventSummaryChain->GetEntry(entry);
@@ -117,7 +118,7 @@ int main(int argc, char *argv[])
 	  // std::cout << (eventSummary->peak[polInd][peakInd].distanceToSource < 1e6 )<< std::endl;
 	  if(eventSummary->peak[polInd][peakInd].theta < 0 && eventSummary->peak[polInd][peakInd].distanceToSource < 1e6){
 	    
-	    clusterer.addPoint(sourceLat,sourceLon,sourceAlt);
+	    clusterer.addPoint(sourceLat,sourceLon,sourceAlt, eventSummary->run, eventSummary->eventNumber);
 	    // Int_t n = clusterer.addPoint(sourceLat,sourceLon,sourceAlt);
 	    // std::cout << n << std::endl;
 	  }
@@ -129,8 +130,26 @@ int main(int argc, char *argv[])
 
   clusterer.kMeansCluster(1);
 
-  
-  
+
+  outFile->cd();
+  for(int clusterInd=0; clusterInd < K; clusterInd++){
+    TGraph* gr = clusterer.makeClusterSummaryTGraph(clusterInd);
+
+    if(gr){
+      gr->Write();
+      delete gr;
+    }
+    else{
+      std::cerr << "??????? " << clusterInd << std::endl;
+    }
+  }
+
+  // no need to write?
+  TTree* clusterTree = clusterer.makeClusterSummaryTree(outFile);
+
+  std::cout << "Made clusterTree with " << clusterTree->GetEntries() << " entries." << std::endl;
+  outFile->Write();
+  outFile->Close();
   
   
   return 0;

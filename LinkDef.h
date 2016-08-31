@@ -7,5 +7,6 @@
 #pragma link C++ class AnitaClusterer+;
 #pragma link C++ class AnitaClusterer::Point+;
 #pragma link C++ class AnitaClusterer::Cluster+;
+#pragma link C++ class ClusteredAnitaEvent+;
 #endif
 

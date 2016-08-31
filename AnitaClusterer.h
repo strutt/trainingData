@@ -157,7 +157,6 @@ public:
   size_t addPoint(Double_t latitude, Double_t longitude, Double_t altitude, Int_t run, UInt_t eventNumber);
   void kMeansCluster(Int_t iterationsPerCout=0);
 
-
   TGraph* makeClusterSummaryTGraph(Int_t clusterInd);
   TTree* makeClusterSummaryTree(TFile* fOut);
   
@@ -168,7 +167,8 @@ private:
   
   void updateClusterCentres();
   void assignPointsToClosestCluster();
-  Double_t assignErrorValues();  
+  Double_t assignErrorValues();
+  Cluster seedCluster(Point& point);  
   
   Int_t numIter;
   Int_t numClusters;
