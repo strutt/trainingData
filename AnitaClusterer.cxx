@@ -25,14 +25,31 @@ inline void prettyPrintConvert(const int n, const double* array){
 
 
 
+// // utility function hopefully this one gets inlined
+// inline Double_t getDistSq(const AnitaClusterer::Point& point, const AnitaClusterer::Cluster& cluster){
+//   Double_t d2=0;
+//   for(int dim=0; dim < nDim; dim++){
+//     Double_t d = cluster.centre[dim] - point.centre[dim];
+//     d2 += d*d;
+//   }
+//   return d2;
+// }
+
+
 // utility function hopefully this one gets inlined
-inline Double_t getDistSq(const AnitaClusterer::Point& point, const AnitaClusterer::Cluster& cluster){
-  Double_t d2=0;
-  for(int dim=0; dim < nDim; dim++){
-    Double_t d = cluster.centre[dim] - point.centre[dim];
-    d2 += d*d;
-  }
-  return d2;
+// inline Double_t getAngDistSq(const AnitaClusterer::Point& point, const AnitaClusterer::Cluster& cluster, UsefulAdu5Pat& usefulPat){
+inline Double_t getAngDistSq(const AnitaClusterer::Point& point, const AnitaClusterer::Cluster& cluster, UsefulAdu5Pat& usefulPat){  
+
+  Double_t thetaWave, phiWave;
+  usefulPat.getThetaAndPhiWave(cluster.longitude, cluster.latitude,cluster.altitude,
+			       thetaWave,phiWave);
+  Double_t thetaDeg = -1*TMath::RadToDeg()*thetaWave;
+  Double_t phiDeg = TMath::RadToDeg()*phiWave;  
+
+  Double_t dThetaSq = (thetaDeg - point.thetaDeg)/point.sigmaThetaDeg;
+  Double_t dPhiSq = RootTools::getDeltaAngleDeg(phiDeg, point.phiDeg)/point.sigmaPhiDeg;
+
+  return dThetaSq*dThetaSq + dPhiSq*dPhiSq;
 }
 
 
@@ -43,6 +60,26 @@ inline Double_t getDistSq(const AnitaClusterer::Point& point, const AnitaCluster
 
 
 
+
+
+
+Double_t AnitaClusterer::findClusterCentre(const double* location){
+  Double_t latitude = location[0];
+  Double_t longitude = location[1];
+  Double_t altitude = location[2];
+
+  clusters.at(minimizingCluster).latitude = latitude;
+  clusters.at(minimizingCluster).longitude = longitude;
+  clusters.at(minimizingCluster).altitude = altitude;  
+
+  Double_t sumDistSq = 0;
+  for(int pointIndInd=0; pointIndInd < (Int_t) thesePoints.size(); pointIndInd++){
+    Int_t pointInd = thesePoints.at(pointIndInd);
+    sumDistSq += getAngDistSq(points.at(pointInd), clusters.at(minimizingCluster), pats.at(pointInd));
+  }
+  
+  return 0;
+}
 
 
 
@@ -52,22 +89,40 @@ AnitaClusterer::AnitaClusterer(Int_t nClusters, Int_t numIterations, Int_t appro
   numClusters = nClusters;
   clusters.reserve(numClusters);
   points.reserve(approxNumPoints);
+  pats.reserve(approxNumPoints);  
   eventNumbers.reserve(approxNumPoints);
   runs.reserve(approxNumPoints);
   initialized = false;
+
+  const char * minName = "Minuit2";
+  const char *algoName = "";
+  min = ROOT::Math::Factory::CreateMinimizer(minName, algoName);
+
+
+  min->SetMaxFunctionCalls(1000000); // for Minuit/Minuit2 
+  min->SetMaxIterations(10000);  // for GSL 
+  min->SetTolerance(0.001);
+  min->SetPrintLevel(1);
+
+  // create funciton wrapper for minmizer
+  // a IMultiGenFunction type 
+ 
+  // do the minimization
+  
 }
 
 
 
 
 
+size_t AnitaClusterer::addPoint(UsefulAdu5Pat usefulPat, Double_t latitude, Double_t longitude, Double_t altitude, Int_t run, UInt_t eventNumber, Double_t sigmaThetaDeg, Double_t sigmaPhiDeg){  
 
+  points.push_back(Point(usefulPat, latitude, longitude, altitude, sigmaThetaDeg, sigmaPhiDeg));
 
-size_t AnitaClusterer::addPoint(UsefulAdu5Pat usefulPat, Double_t latitude, Double_t longitude, Double_t altitude, Int_t run, UInt_t eventNumber){
-  points.push_back(Point(latitude, longitude, altitude));
   eventNumbers.push_back(eventNumber);
   runs.push_back(run);
   pats.push_back(usefulPat);
+
   return points.size();
 }
 
@@ -127,7 +182,8 @@ void AnitaClusterer::kMeansPlusPlusInitialize(Int_t seed){
 
       // assign all points to this cluster
       for(int pointInd=0; pointInd < numPoints; pointInd++){
-	points.at(pointInd).error = getDistSq(points.at(pointInd), clusters.at(clusterInd));
+	// points.at(pointInd).error = getDistSq(points.at(pointInd), clusters.at(clusterInd));
+	points.at(pointInd).error = getAngDistSq(points.at(pointInd), clusters.at(clusterInd), pats.at(pointInd));	
 	points.at(pointInd).inCluster = clusterInd;
       }
 
@@ -167,13 +223,13 @@ void AnitaClusterer::kMeansPlusPlusInitialize(Int_t seed){
 	}
       }
 
-      if(clusterInd == 142 || clusterInd == 65){
-	std::cerr << clusterInd << "\t" << nextPoint << "\t" << pointInrunningTotal << std::endl;
-	std::cerr << cumulativeDistanceSquaredToNearestClusters.at(nextPoint) << "\t"
-		  << cumulativeDistanceSquaredToNearestClusters.at(nextPoint+1) << std::endl;
-	std::cerr << cumulativeDistanceSquaredToNearestClusters.at(nextPoint+1) - cumulativeDistanceSquaredToNearestClusters.at(nextPoint)  << std::endl;
-	std::cerr << points.at(nextPoint).error << std::endl;
-      }
+      // if(clusterInd == 142 || clusterInd == 65){
+      // 	std::cerr << clusterInd << "\t" << nextPoint << "\t" << pointInrunningTotal << std::endl;
+      // 	std::cerr << cumulativeDistanceSquaredToNearestClusters.at(nextPoint) << "\t"
+      // 		  << cumulativeDistanceSquaredToNearestClusters.at(nextPoint+1) << std::endl;
+      // 	std::cerr << cumulativeDistanceSquaredToNearestClusters.at(nextPoint+1) - cumulativeDistanceSquaredToNearestClusters.at(nextPoint)  << std::endl;
+      // 	std::cerr << points.at(nextPoint).error << std::endl;
+      // }
 
 
       // map point to this cluster
@@ -192,7 +248,8 @@ void AnitaClusterer::kMeansPlusPlusInitialize(Int_t seed){
 
       // assign all points to this cluster
       for(int pointInd=0; pointInd < numPoints; pointInd++){
-	Double_t dSq = getDistSq(points.at(pointInd), clusters.at(clusterInd));
+	Double_t dSq = getAngDistSq(points.at(pointInd), clusters.at(clusterInd), pats.at(pointInd));
+	// Double_t dSq = getDistSq(points.at(pointInd), clusters.at(clusterInd));
 
 	// if((clusterInd==65 || clusterInd==142) && pointInd == 218860){
 	//   std::cerr << "Updating distance squared " << dSq << std::endl;
@@ -324,7 +381,8 @@ void AnitaClusterer::assignPointsToClosestCluster(){
     Int_t minClusterInd = points.at(pointInd).inCluster;
 
     if(minClusterInd >= 0 && minClusterInd < numClusters){
-      minD2 = getDistSq(points.at(pointInd), clusters.at(minClusterInd));
+      // minD2 = getDistSq(points.at(pointInd), clusters.at(minClusterInd));
+      minD2 = getAngDistSq(points.at(pointInd), clusters.at(minClusterInd), pats.at(pointInd));      
     }
     
     for(int clusterInd=0; clusterInd < numClusters; clusterInd++){
@@ -347,7 +405,8 @@ void AnitaClusterer::assignPointsToClosestCluster(){
       // 	prettyPrintConvert(nDim, clusters.at(clusterInd-1).centre);
       // }
 
-      Double_t d2 = getDistSq(points.at(pointInd), clusters.at(clusterInd));
+      // Double_t d2 = getDistSq(points.at(pointInd), clusters.at(clusterInd));
+      Double_t d2 = getAngDistSq(points.at(pointInd), clusters.at(clusterInd), pats.at(pointInd));
       
       if(d2 < minD2){
 	minD2 = d2;
@@ -383,89 +442,133 @@ void AnitaClusterer::assignPointsToClosestCluster(){
 
 
 
+// void AnitaClusterer::updateClusterCentres(){
+//   // -----------------------------------------------------------
+//   // update cluster centres...
+
+
+//   // pre-check
+//   for(int clusterInd=0; clusterInd < (Int_t) clusters.size(); clusterInd++){
+//     for(int dim=0; dim < nDim; dim++){
+//       if(clusters.at(clusterInd).numEvents > 0){
+// 	clusters.at(clusterInd).centre[dim]/=clusters.at(clusterInd).numEvents;
+//       }
+//       else{
+// 	std::cerr << std::endl <<  "PRE-CHECK" << std::endl;
+// 	const Point& point = points[seedPoints.at(clusterInd)];
+// 	const Cluster& cluster = clusters.at(clusterInd);
+// 	std::cerr << "Warning in " << __FILE__ << ", cluster with 0 events" << std::endl;
+// 	std::cerr << "The cluster has index " << clusterInd << " and centre:" << std::endl;
+// 	prettyPrint(nDim, cluster.centre);
+// 	prettyPrintConvert(nDim, cluster.centre);
+// 	std::cerr << "The seed point has index " << seedPoints.at(clusterInd) << " and centre:" << std::endl;
+// 	prettyPrint(nDim, point.centre);
+// 	std::cerr << "Seed point has a distance metric " << getDistSq(points.at(seedPoints.at(clusterInd)), cluster) << std::endl;
+
+// 	std::cerr << "Also, the seed point now thinks its closest cluster is " << point.inCluster
+// 		  << ", which is located at " << std::endl;
+// 	prettyPrint(nDim, clusters[point.inCluster].centre);
+// 	std::cerr << "New point has a distance metric " << getDistSq(point, cluster) << std::endl;	
+//       }
+//     }
+//     clusters.at(clusterInd).totalError = 0;
+//   }
+  
+  
+
+//   for(int clusterInd=0; clusterInd < (Int_t) clusters.size(); clusterInd++){
+//     for(int dim=0; dim < nDim; dim++){
+//       clusters.at(clusterInd).centre[dim] = 0;
+//     }
+//     clusters.at(clusterInd).numEvents = 0;
+//   }
+//   // Int_t num142 = 0;
+//   for(int pointInd=0; pointInd < (Int_t) points.size(); pointInd++){
+//     Int_t clusterInd = points.at(pointInd).inCluster;
+//     for(int dim=0; dim < nDim; dim++){
+//       clusters.at(clusterInd).centre[dim] += points.at(pointInd).centre[dim];
+//     }
+//     clusters.at(clusterInd).numEvents++;
+//   }
+//   for(int clusterInd=0; clusterInd < (Int_t) clusters.size(); clusterInd++){
+//     for(int dim=0; dim < nDim; dim++){
+//       if(clusters.at(clusterInd).numEvents > 0){
+// 	clusters.at(clusterInd).centre[dim]/=clusters.at(clusterInd).numEvents;
+//       }
+//       else{
+// 	std::cerr << std::endl <<  "POST-CHECK" << std::endl;	
+// 	const Point& point = points[seedPoints.at(clusterInd)];
+// 	const Cluster& cluster = clusters.at(clusterInd);
+// 	std::cerr << "Warning in " << __FILE__ << ", cluster with 0 events" << std::endl;
+// 	std::cerr << "The cluster has index " << clusterInd << " and centre:" << std::endl;
+// 	prettyPrint(nDim, cluster.centre);
+// 	prettyPrintConvert(nDim, cluster.centre);
+// 	std::cerr << "The seed point has index " << seedPoints.at(clusterInd) << " and centre:" << std::endl;
+// 	prettyPrint(nDim, point.centre);
+// 	std::cerr << "Seed point has a distance metric " << getDistSq(points.at(seedPoints.at(clusterInd)), cluster) << std::endl;
+
+// 	std::cerr << "Also, the seed point now thinks its closest cluster is " << point.inCluster
+// 		  << ", which is located at " << std::endl;
+// 	prettyPrint(nDim, clusters[point.inCluster].centre);
+// 	std::cerr << "New point has a distance metric " << getDistSq(point, cluster) << std::endl;	
+//       }
+//     }
+//     clusters.at(clusterInd).totalError = 0;
+//   }
+// }
+
+
+
 void AnitaClusterer::updateClusterCentres(){
   // -----------------------------------------------------------
   // update cluster centres...
 
 
+  // now we're doing angles this is the hard problem...
+  // can't take a simple mean position...
+
+  // need definitionally need to minimize get angle...
+  // sounds like a job for minuit... damn it.
+
+
+
+  ROOT::Math::Functor f(this, &AnitaClusterer::findClusterCentre,nDim);
+  double step[nDim] = {0.001,0.001, 0.001};
+  min->SetFunction(f);
+  min->SetVariable(0,"latitude", theMinimizingLatLonAlt[0], step[0]);
+  min->SetVariable(1,"longitude", theMinimizingLatLonAlt[1], step[1]);
+  min->SetVariable(2,"alititde", theMinimizingLatLonAlt[2], step[2]);
+
+  
   // pre-check
   for(int clusterInd=0; clusterInd < (Int_t) clusters.size(); clusterInd++){
-    for(int dim=0; dim < nDim; dim++){
-      if(clusters.at(clusterInd).numEvents > 0){
-	clusters.at(clusterInd).centre[dim]/=clusters.at(clusterInd).numEvents;
-      }
-      else{
-	std::cerr << std::endl <<  "PRE-CHECK" << std::endl;
-	const Point& point = points[seedPoints.at(clusterInd)];
-	const Cluster& cluster = clusters.at(clusterInd);
-	std::cerr << "Warning in " << __FILE__ << ", cluster with 0 events" << std::endl;
-	std::cerr << "The cluster has index " << clusterInd << " and centre:" << std::endl;
-	prettyPrint(nDim, cluster.centre);
-	prettyPrintConvert(nDim, cluster.centre);
-	std::cerr << "The seed point has index " << seedPoints.at(clusterInd) << " and centre:" << std::endl;
-	prettyPrint(nDim, point.centre);
-	std::cerr << "Seed point has a distance metric " << getDistSq(points.at(seedPoints.at(clusterInd)), cluster) << std::endl;
 
-	std::cerr << "Also, the seed point now thinks its closest cluster is " << point.inCluster
-		  << ", which is located at " << std::endl;
-	prettyPrint(nDim, clusters[point.inCluster].centre);
-	std::cerr << "New point has a distance metric " << getDistSq(point, cluster) << std::endl;	
+    // preselect points in the cluster
+    thesePoints.clear();
+    thesePoints.reserve(clusters.at(clusterInd).numEvents);
+    for(int pointInd=0; pointInd < (Int_t)points.size(); pointInd++){
+      if(points.at(pointInd).inCluster==clusterInd){
+	thesePoints.push_back(pointInd);
       }
     }
-    clusters.at(clusterInd).totalError = 0;
-  }
-  
-  
 
-  for(int clusterInd=0; clusterInd < (Int_t) clusters.size(); clusterInd++){
-    for(int dim=0; dim < nDim; dim++){
-      clusters.at(clusterInd).centre[dim] = 0;
-    }
-    clusters.at(clusterInd).numEvents = 0;
-  }
-  // Int_t num142 = 0;
-  for(int pointInd=0; pointInd < (Int_t) points.size(); pointInd++){
-    Int_t clusterInd = points.at(pointInd).inCluster;
-    for(int dim=0; dim < nDim; dim++){
-      clusters.at(clusterInd).centre[dim] += points.at(pointInd).centre[dim];
-    }
-    clusters.at(clusterInd).numEvents++;
-  }
-  for(int clusterInd=0; clusterInd < (Int_t) clusters.size(); clusterInd++){
-    for(int dim=0; dim < nDim; dim++){
-      if(clusters.at(clusterInd).numEvents > 0){
-	clusters.at(clusterInd).centre[dim]/=clusters.at(clusterInd).numEvents;
-      }
-      else{
-	std::cerr << std::endl <<  "POST-CHECK" << std::endl;	
-	const Point& point = points[seedPoints.at(clusterInd)];
-	const Cluster& cluster = clusters.at(clusterInd);
-	std::cerr << "Warning in " << __FILE__ << ", cluster with 0 events" << std::endl;
-	std::cerr << "The cluster has index " << clusterInd << " and centre:" << std::endl;
-	prettyPrint(nDim, cluster.centre);
-	prettyPrintConvert(nDim, cluster.centre);
-	std::cerr << "The seed point has index " << seedPoints.at(clusterInd) << " and centre:" << std::endl;
-	prettyPrint(nDim, point.centre);
-	std::cerr << "Seed point has a distance metric " << getDistSq(points.at(seedPoints.at(clusterInd)), cluster) << std::endl;
 
-	std::cerr << "Also, the seed point now thinks its closest cluster is " << point.inCluster
-		  << ", which is located at " << std::endl;
-	prettyPrint(nDim, clusters[point.inCluster].centre);
-	std::cerr << "New point has a distance metric " << getDistSq(point, cluster) << std::endl;	
-      }
-    }
-    clusters.at(clusterInd).totalError = 0;
+    // set up the minimizer initial conditions
+    minimizingCluster = clusterInd; 
+    theMinimizingLatLonAlt[0] = clusters.at(clusterInd).latitude;
+    theMinimizingLatLonAlt[1] = clusters.at(clusterInd).longitude;
+    theMinimizingLatLonAlt[2] = clusters.at(clusterInd).altitude;
+
+    min->Minimize(); 
+ 
+    const double *xs = min->X();
+    clusters.at(clusterInd).latitude = xs[0];
+    clusters.at(clusterInd).longitude = xs[1];
+    clusters.at(clusterInd).altitude = xs[2];
+
+    clusters.at(clusterInd).totalError = min->MinValue();
   }
 }
-
-
-
-
-
-
-
-
-
 
 
 
@@ -474,16 +577,42 @@ void AnitaClusterer::updateClusterCentres(){
 Double_t AnitaClusterer::assignErrorValues(){
   // -----------------------------------------------------------
   // assign error values
-  Double_t sumClusterErrors = 0;    
+  for(int clusterInd=0; clusterInd < numClusters; clusterInd++){
+    clusters.at(clusterInd).totalError += 0;
+  }
+  
+  Double_t sumClusterErrors = 0;
   for(int pointInd=0; pointInd < (Int_t) points.size(); pointInd++){
     Int_t clusterInd = points.at(pointInd).inCluster;
-    Double_t d2 = getDistSq(points.at(pointInd), clusters.at(clusterInd));
+    Double_t d2 = getAngDistSq(points.at(pointInd), clusters.at(clusterInd), pats.at(pointInd));
     points.at(pointInd).error = d2;
     clusters.at(clusterInd).totalError += d2;
     sumClusterErrors += d2;
   }
   return sumClusterErrors;
 }
+
+
+
+
+
+
+
+
+
+// Double_t AnitaClusterer::assignErrorValues(){
+//   // -----------------------------------------------------------
+//   // assign error values
+//   Double_t sumClusterErrors = 0;    
+//   for(int pointInd=0; pointInd < (Int_t) points.size(); pointInd++){
+//     Int_t clusterInd = points.at(pointInd).inCluster;
+//     Double_t d2 = getDistSq(points.at(pointInd), clusters.at(clusterInd));
+//     points.at(pointInd).error = d2;
+//     clusters.at(clusterInd).totalError += d2;
+//     sumClusterErrors += d2;
+//   }
+//   return sumClusterErrors;
+// }
 
 
 
@@ -510,14 +639,14 @@ TGraph* AnitaClusterer::makeClusterSummaryTGraph(Int_t clusterInd){
     gr->SetTitle(title);    
     
 
-    AnitaGeomTool* geom = AnitaGeomTool::Instance();
+    // AnitaGeomTool* geom = AnitaGeomTool::Instance();
 
     for(int pointInd=0; pointInd < (Int_t) points.size(); pointInd++){
       if(points.at(pointInd).inCluster==clusterInd){
 
-	Double_t lat, lon, alt;
-	geom->getLatLonAltFromCartesian(points.at(pointInd).centre, lat, lon, alt);
-	gr->SetPoint(gr->GetN(), lon, lat);
+	// Double_t lat, lon, alt;
+	// geom->getLatLonAltFromCartesian(points.at(pointInd).centre, lat, lon, alt);
+	gr->SetPoint(gr->GetN(), points.at(pointInd).latitude, points.at(pointInd).longitude);
       }
     }
   }
@@ -548,7 +677,7 @@ TTree* AnitaClusterer::makeClusterSummaryTree(TFile* fOut){
   ClusteredAnitaEvent* clusteredEvent;
   clusterTree->Branch("clusteredEvent", &clusteredEvent);
 
-  AnitaGeomTool* geom = AnitaGeomTool::Instance();
+  // AnitaGeomTool* geom = AnitaGeomTool::Instance();
   
   for(Int_t pointInd=0; pointInd < (Int_t)points.size(); pointInd++){
 
@@ -559,28 +688,29 @@ TTree* AnitaClusterer::makeClusterSummaryTree(TFile* fOut){
     clusteredEvent->run = runs.at(pointInd);
 
     // convert from km back to m for conversion to lat/lon/alt
-    for(int dim=0; dim < nDim; dim++){
-      clusteredEvent->eventPosition[dim] = point.centre[dim];
-    }
-    geom->getLatLonAltFromCartesian(clusteredEvent->eventPosition,\
-				    clusteredEvent->eventLat,\
-				    clusteredEvent->eventLon,\
-				    clusteredEvent->eventAlt);
+    // for(int dim=0; dim < nDim; dim++){
+    //   // clusteredEvent->eventPosition[dim] = point.centre[dim];
+    //   clusteredEvent->eventPosition[dim] = point.centre[dim];      
+    // }
+    // geom->getLatLonAltFromCartesian(clusteredEvent->eventPosition,\
+    // 				    clusteredEvent->eventLat,\
+    // 				    clusteredEvent->eventLon,\
+    // 				    clusteredEvent->eventAlt);
+    clusteredEvent->eventLat = point.latitude;
+    clusteredEvent->eventLon = point.longitude;
+    clusteredEvent->eventAlt = point.altitude;
 
     Int_t clusterInd = points.at(pointInd).inCluster;
     clusteredEvent->inCluster = clusterInd;
 
     const Cluster& cluster = clusters.at(clusterInd);
     
-    for(int dim=0; dim < nDim; dim++){
-      clusteredEvent->clusterPosition[dim] = cluster.centre[dim];
-    }
-    geom->getLatLonAltFromCartesian(clusteredEvent->clusterPosition,\
-				    clusteredEvent->clusterLat,\
-				    clusteredEvent->clusterLon,\
-				    clusteredEvent->clusterAlt);
-
-    clusteredEvent->distanceToClusterCentroid = TMath::Sqrt(getDistSq(point, cluster));
+    clusteredEvent->clusterLat = cluster.latitude;
+    clusteredEvent->clusterLon = cluster.longitude;
+    clusteredEvent->clusterAlt = cluster.altitude;
+    
+    // clusteredEvent->distanceToClusterCentroid = TMath::Sqrt(getDistSq(point, cluster));
+    // clusteredEvent->distanceToClusterCentroid = get(point, cluster));    
     clusteredEvent->errorToClusteredCentroid = points.at(pointInd).error;
 
     clusteredEvent->numEventsInCluster = cluster.numEvents;    

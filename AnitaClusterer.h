@@ -18,7 +18,11 @@
 #include "TTree.h"
 #include "TFile.h"
 
+#include "Math/Minimizer.h"
+#include "Math/Factory.h"
+#include "Math/Functor.h"
 
+#include "RootTools.h"
 
 #include "assert.h"
 
@@ -40,7 +44,7 @@ class ClusteredAnitaEvent{
 public:
   UInt_t eventNumber;
   Int_t run;
-  Double_t eventPosition[nDim]; // Event position cartesian (m)
+  // Double_t eventPosition[nDim]; // Event position cartesian (m)
   Double_t eventLat; // latitude of position of event
   Double_t eventLon; // longitude of position of event
   Double_t eventAlt; // altitude of posiiton of event
@@ -50,7 +54,7 @@ public:
  
   Int_t inCluster; // ID of cluster
   Int_t numEventsInCluster; // number of events in the cluster containing this event
-  Double_t clusterPosition[nDim]; // centroid of cluster cartesian (m)
+  // Double_t clusterPosition[nDim]; // centroid of cluster cartesian (m)
   Double_t clusterLat; // latitude of centroid of cluster
   Double_t clusterLon; // longitude of centroid of cluster
   Double_t clusterAlt; // altitude of centroid of cluster
@@ -84,36 +88,64 @@ public:
    */
   class Point{
   public:
-    Double_t centre[nDim];
-    Double_t error;
-    Int_t inCluster;
+    // Double_t centre[nDim];
+    Double_t latitude;
+    Double_t longitude;
+    Double_t altitude;
+    Double_t thetaDeg;
+    Double_t phiDeg;
+    Double_t dTheta; // theta distance to cluster
+    Double_t dPhi; // phi distance to cluster
+    Double_t sigmaThetaDeg; // resolution associated with this snr?
+    Double_t sigmaPhiDeg; // resolution associated with this snr?
+    Double_t error; //
+    Int_t inCluster; // which cluster am I associated with?
     
-    Point(Double_t latitude=0, Double_t longitude=0, Double_t altitude=0){
-      AnitaGeomTool* geom = AnitaGeomTool::Instance();
-      geom->getCartesianCoords(latitude,longitude,altitude, centre);
-      inCluster = -1;
+    Point(UsefulAdu5Pat& usefulPat, \
+	  Double_t lat=0, Double_t lon=0, Double_t alt=0,\
+	  Double_t sigmaTheta = 0.5, Double_t sigmaPhi = 1){
+      latitude = lat;
+      longitude = lon;
+      altitude = alt;
+      usefulPat.getThetaAndPhiWave(longitude, latitude, altitude, thetaDeg, phiDeg);
+
+      // convert to degrees
+      thetaDeg = -1*thetaDeg*TMath::RadToDeg();
+      phiDeg = phiDeg*TMath::RadToDeg();      
+      // dTheta = 0;
+      // dPhi = 0;
+      sigmaThetaDeg = sigmaTheta;
+      sigmaPhiDeg = sigmaPhi;
       error = 0;
+      inCluster = -1;
+      // for(int dim=0; dim < nDim; dim++){
+      // 	centre[dim] = 0;
+      // }
     }
+    Point(){
+      latitude = 0;
+      longitude = 0;
+      altitude = 0;
+      thetaDeg = -9999;
+      phiDeg = -9999;
+
+      // convert to degrees
+      thetaDeg = -9999;
+      phiDeg = -9999; 
+      // dTheta = 0;
+      // dPhi = 0;
+      sigmaThetaDeg = -9999;
+      sigmaPhiDeg = -9999;
+      error = 0;
+      inCluster = -1;
+      // for(int dim=0; dim < nDim; dim++){
+      // 	centre[dim] = 0;
+      // }
+
+      }
     virtual ~Point(){ ;}
     ClassDef(Point, 1)    
   };
-
-
-  // //--------------------------------------------------------------------------------------------------------
-  // /** 
-  //  * @class UncertainPoint
-  //  * @ Position on the contitent with an error ellipse in Cartesian Coordinates
-  //  */
-  // class UncertainPoint : public Point{
-  // public:
-  //   Double_t posThetaError[nDim];
-  //   Double_t negThetaError[nDim];
-  //   Double_t posPhiError[nDim];
-  //   Double_t negPhiError[nDim];
-  //   virtual ~UncertainPoint(){ ;}
-  //   ClassDef(Point, 1);
-  // }; 
-
   
 
   //--------------------------------------------------------------------------------------------------------
@@ -124,28 +156,25 @@ public:
   class Cluster{
   public:
     Cluster(){
-      for(int dim=0; dim < nDim; dim++){
-	centre[dim] = 0;
-      }
       numEvents = 0;
       totalError = 0;
+      latitude = 0;
+      longitude = 0;
+      altitude = 0;
     }
 
     explicit Cluster(const Point& seedPoint) {
+      latitude = seedPoint.latitude;
+      longitude = seedPoint.longitude;
+      longitude = seedPoint.longitude;            
       numEvents = 1;
-      totalError = 0;      
-      for(int dim=0; dim < nDim; dim++){
-	centre[dim] = seedPoint.centre[dim];
-	if(centre[dim] == 0){
-	  std::cerr << "???????????" << std::endl;
-	}
-      }
+      totalError = 0;
     }
     
-    Double_t centre[nDim];
+    Double_t latitude;
+    Double_t longitude;
+    Double_t altitude;
     Int_t numEvents;
-    // Mean "distance" of all points to cluster centre (a cluster figure of merit)
-    // this is what the k-means++ algorithm should minimize
     Double_t totalError;
     
     virtual ~Cluster(){ ;}    
@@ -155,7 +184,7 @@ public:
 
   
   AnitaClusterer(Int_t nClusters, Int_t numIterations, Int_t approxNumPoints=0);
-  size_t addPoint(UsefulAdu5Pat usefulPat, Double_t latitude, Double_t longitude, Double_t altitude, Int_t run, UInt_t eventNumber);
+  size_t addPoint(UsefulAdu5Pat usefulPat, Double_t latitude, Double_t longitude, Double_t altitude, Int_t run, UInt_t eventNumber, Double_t sigmaThetaDeg, Double_t sigmaPhiDeg);
   void kMeansCluster(Int_t iterationsPerCout=0);
 
   TGraph* makeClusterSummaryTGraph(Int_t clusterInd);
@@ -169,7 +198,7 @@ private:
   void updateClusterCentres();
   void assignPointsToClosestCluster();
   Double_t assignErrorValues();
-  Cluster seedCluster(Point& point);  
+  Cluster seedCluster(Point& point);
   
   Int_t numIter;
   Int_t numClusters;
@@ -185,6 +214,12 @@ private:
   std::vector<Double_t> deltaTheta;
   std::vector<Double_t> deltaPhi;
   Bool_t initialized;
+
+  std::vector<Int_t> thesePoints;
+  Int_t minimizingCluster;
+  ROOT::Math::Minimizer* min;
+  Double_t theMinimizingLatLonAlt[nDim];
+  Double_t findClusterCentre(const double* location);  
   
 };
 
