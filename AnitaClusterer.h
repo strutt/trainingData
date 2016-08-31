@@ -88,7 +88,7 @@ public:
    */
   class Point{
   public:
-    // Double_t centre[nDim];
+    Double_t centre[nDim];
     Double_t latitude;
     Double_t longitude;
     Double_t altitude;
@@ -108,6 +108,7 @@ public:
       longitude = lon;
       altitude = alt;
       usefulPat.getThetaAndPhiWave(longitude, latitude, altitude, thetaDeg, phiDeg);
+      
 
       // convert to degrees
       thetaDeg = -1*thetaDeg*TMath::RadToDeg();
@@ -118,6 +119,8 @@ public:
       sigmaPhiDeg = sigmaPhi;
       error = 0;
       inCluster = -1;
+      AnitaGeomTool* geom = AnitaGeomTool::Instance();
+      geom->getCartesianCoords(lat, lon, alt, centre);
       // for(int dim=0; dim < nDim; dim++){
       // 	centre[dim] = 0;
       // }
@@ -138,9 +141,9 @@ public:
       sigmaPhiDeg = -9999;
       error = 0;
       inCluster = -1;
-      // for(int dim=0; dim < nDim; dim++){
-      // 	centre[dim] = 0;
-      // }
+      for(int dim=0; dim < nDim; dim++){
+      	centre[dim] = 0;
+      }
 
       }
     virtual ~Point(){ ;}
@@ -156,6 +159,9 @@ public:
   class Cluster{
   public:
     Cluster(){
+      for(int dim=0; dim < nDim; dim++){
+      	centre[dim] = 0;
+      }
       numEvents = 0;
       totalError = 0;
       latitude = 0;
@@ -166,11 +172,14 @@ public:
     explicit Cluster(const Point& seedPoint) {
       latitude = seedPoint.latitude;
       longitude = seedPoint.longitude;
-      longitude = seedPoint.longitude;            
+      longitude = seedPoint.longitude;
+      for(int dim=0; dim < nDim; dim++){
+      	centre[dim] = seedPoint.centre[dim];
+      }
       numEvents = 1;
       totalError = 0;
     }
-    
+    Double_t centre[nDim];
     Double_t latitude;
     Double_t longitude;
     Double_t altitude;
@@ -214,12 +223,6 @@ private:
   std::vector<Double_t> deltaTheta;
   std::vector<Double_t> deltaPhi;
   Bool_t initialized;
-
-  std::vector<Int_t> thesePoints;
-  Int_t minimizingCluster;
-  ROOT::Math::Minimizer* min;
-  Double_t theMinimizingLatLonAlt[nDim];
-  Double_t findClusterCentre(const double* location);  
   
 };
 
