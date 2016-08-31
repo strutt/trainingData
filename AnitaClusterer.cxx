@@ -63,10 +63,11 @@ AnitaClusterer::AnitaClusterer(Int_t nClusters, Int_t numIterations, Int_t appro
 
 
 
-size_t AnitaClusterer::addPoint(Double_t latitude, Double_t longitude, Double_t altitude, Int_t run, UInt_t eventNumber){
+size_t AnitaClusterer::addPoint(UsefulAdu5Pat usefulPat, Double_t latitude, Double_t longitude, Double_t altitude, Int_t run, UInt_t eventNumber){
   points.push_back(Point(latitude, longitude, altitude));
   eventNumbers.push_back(eventNumber);
-  runs.push_back(run);  
+  runs.push_back(run);
+  pats.push_back(usefulPat);
   return points.size();
 }
 
@@ -522,7 +523,6 @@ TGraph* AnitaClusterer::makeClusterSummaryTGraph(Int_t clusterInd){
   }
   return gr;
 }
-
 
 
 

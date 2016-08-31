@@ -12,6 +12,7 @@
 
 
 #include "AnitaGeomTool.h"
+#include "UsefulAdu5Pat.h"
 #include "TRandom3.h"
 #include "TGraph.h"
 #include "TTree.h"
@@ -154,7 +155,7 @@ public:
 
   
   AnitaClusterer(Int_t nClusters, Int_t numIterations, Int_t approxNumPoints=0);
-  size_t addPoint(Double_t latitude, Double_t longitude, Double_t altitude, Int_t run, UInt_t eventNumber);
+  size_t addPoint(UsefulAdu5Pat usefulPat, Double_t latitude, Double_t longitude, Double_t altitude, Int_t run, UInt_t eventNumber);
   void kMeansCluster(Int_t iterationsPerCout=0);
 
   TGraph* makeClusterSummaryTGraph(Int_t clusterInd);
@@ -175,11 +176,14 @@ private:
 
   const double minimalImprovement = 0.01;
   std::vector<Point> points; // only variables relevant to clustering
+  std::vector<UsefulAdu5Pat> pats;
   std::vector<Cluster> clusters; // only variables relevant to clustering
   std::vector<Int_t> seedPoints; // which points seeded which clusters
 
   std::vector<UInt_t> eventNumbers; // keep track of these separately
-  std::vector<Int_t> runs; // keep track of these separately   
+  std::vector<Int_t> runs; // keep track of these separately
+  std::vector<Double_t> deltaTheta;
+  std::vector<Double_t> deltaPhi;
   Bool_t initialized;
   
 };
