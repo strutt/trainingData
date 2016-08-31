@@ -102,8 +102,8 @@ int main(int argc, char *argv[])
   ProgressBar p(maxEntry-startEntry);
 
 
-  const int K = 150;
-  const int numIterations = 1;
+  const int K = 200;
+  const int numIterations = 10;
   AnitaClusterer clusterer(K, numIterations);
   
   for(Long64_t entry = startEntry; entry < maxEntry; entry++){    
