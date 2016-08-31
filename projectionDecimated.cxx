@@ -122,6 +122,10 @@ int main(int argc, char *argv[])
   TTree* outTree = new TTree("eventSummaryTree", "eventSummaryTree");
   AnitaEventSummary* outEventSummary = NULL;
   outTree->Branch("eventSummary", &outEventSummary);
+
+  TTree* outTree2 = new TTree("adu5PatTree", "adu5PatTree");
+  Adu5Pat* pat2 = NULL;
+  outTree2->Branch("pat", &pat2);
   
   Long64_t nEntries = eventSummaryChain->GetEntries();
   Long64_t maxEntry = 0; //2500;
@@ -248,6 +252,12 @@ int main(int argc, char *argv[])
     }
 
     outTree->Fill();
+    
+    pat2 = pat;
+    
+    outTree2->Fill();
+
+    // delete pat2;
     
     p.inc(entry, maxEntry);
   }
