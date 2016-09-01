@@ -3,7 +3,7 @@
  Author: Ben Strutt
  Email: b.strutt.12@ucl.ac.uk
 
- Description:             
+ Description:
 ********************************************************************************************************* */
 
 #include "TFile.h"
@@ -33,8 +33,6 @@
 
 #include "AnitaClusterer.h"
 
-      
-//  
 
 int main(int argc, char *argv[])
 {
@@ -44,7 +42,7 @@ int main(int argc, char *argv[])
     std::cerr << "Usage 2: " << argv[0] << " [firstRun] [lastRun]" << std::endl;
     return 1;
   }
-  
+
   std::cout << argv[0] << "\t" << argv[1];
   if(argc==3){std::cout << "\t" << argv[2];}
   std::cout << std::endl;
@@ -53,8 +51,8 @@ int main(int argc, char *argv[])
 
   TChain* eventSummaryChain = new TChain("eventSummaryTree");
   // TChain* headChain = new TChain("headTree");
-  TChain* indexedHeadChain = new TChain("headTree");
-  TChain* gpsChain = new TChain("adu5PatTree");  
+  // TChain* indexedHeadChain = new TChain("headTree");
+  TChain* gpsChain = new TChain("adu5PatTree");
 
   for(Int_t run=firstRun; run<=lastRun; run++){
     if(run>=257 && run<=263){
@@ -63,18 +61,18 @@ int main(int argc, char *argv[])
     if(run == 198 || run == 287){
       continue;
     }
-    
+
     TString fileName = TString::Format("projectionPlots/projectionDecimatedPlots_%d_*", run);
     eventSummaryChain->Add(fileName);
 
-    fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/headFile%d.root", run, run);
-    // // TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/decimatedHeadFile%d.root", run, run);
+    // fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/headFile%d.root", run, run);
+    // TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/decimatedHeadFile%d.root", run, run);
     // headChain->Add(fileName);
 
-    fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/indexedBlindHeadFile%d.root", run, run);
-    indexedHeadChain->Add(fileName);
-    
-    fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/gpsEvent%d.root", run, run);
+    // fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/indexedBlindHeadFile%d.root", run, run);
+    // indexedHeadChain->Add(fileName);
+
+    // fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/gpsEvent%d.root", run, run);
     gpsChain->Add(fileName);
   }
 
@@ -88,20 +86,20 @@ int main(int argc, char *argv[])
     return 1;
   }
 
-  if(indexedHeadChain->GetEntries()==0){
-    std::cerr << "Unable to find header files!" << std::endl;
-    return 1;
-  }
-  indexedHeadChain->BuildIndex("eventNumber");
-  
-  
+  // if(indexedHeadChain->GetEntries()==0){
+  //   std::cerr << "Unable to find header files!" << std::endl;
+  //   return 1;
+  // }
+  // indexedHeadChain->BuildIndex("eventNumber");
+
+
   AnitaEventSummary* eventSummary = NULL;
   eventSummaryChain->SetBranchAddress("eventSummary", &eventSummary);
   Adu5Pat* pat = NULL;
   gpsChain->SetBranchAddress("pat", &pat);
-  UInt_t eventNumberPat = 0;
-  gpsChain->SetBranchAddress("eventNumber", &eventNumberPat);  
-  
+  // UInt_t eventNumberPat = 0;
+  // gpsChain->SetBranchAddress("eventNumber", &eventNumberPat);
+
   OutputConvention oc(argc, argv);
   TString outFileName = oc.getOutputFileName();
   TFile* outFile = new TFile(outFileName, "recreate");
@@ -118,21 +116,20 @@ int main(int argc, char *argv[])
   ProgressBar p(maxEntry-startEntry);
 
 
-  const int K = 200;
+  const int K = 50;
   const int numIterations = 10;
   AnitaClusterer clusterer(K, numIterations);
-  
-  for(Long64_t entry = startEntry; entry < maxEntry; entry++){    
+
+  for(Long64_t entry = startEntry; entry < maxEntry; entry++){
     eventSummaryChain->GetEntry(entry);
 
-    Long64_t entry2 = indexedHeadChain->GetEntryNumberWithIndex(eventSummary->eventNumber);
-    gpsChain->GetEntry(entry2);
+    // Long64_t entry2 = indexedHeadChain->GetEntryNumberWithIndex(eventSummary->eventNumber);
+    gpsChain->GetEntry(entry);
 
-    if(eventSummary->eventNumber!=eventNumberPat){
-      std::cerr << "fuck" << std::endl;
-    }
-    UsefulAdu5Pat usefulPat(pat);
-    
+    // if(eventSummary->eventNumber!=eventNumberPat){
+    //   std::cerr << "fuck" << std::endl;
+    // }
+
     for(Int_t polInd=0; polInd < NUM_POL; polInd++){
       for(int peakInd=0; peakInd < 5; peakInd++){
 	Double_t sourceLat = eventSummary->peak[polInd][peakInd].latitude;
@@ -141,8 +138,8 @@ int main(int argc, char *argv[])
 	if(sourceLat > -999 && sourceLon > -999){
 	  // std::cout << (eventSummary->peak[polInd][peakInd].distanceToSource < 1e6 )<< std::endl;
 	  if(eventSummary->peak[polInd][peakInd].theta < 0 && eventSummary->peak[polInd][peakInd].distanceToSource < 1e6){
-	    
-	    clusterer.addPoint(usefulPat, sourceLat,sourceLon,sourceAlt, eventSummary->run, eventSummary->eventNumber, 0.2, 0.5);	    
+
+	    clusterer.addPoint(pat, sourceLat,sourceLon,sourceAlt, eventSummary->run, eventSummary->eventNumber, 0.2, 0.5);
 	    // Int_t n = clusterer.addPoint(sourceLat,sourceLon,sourceAlt);
 	    // std::cout << n << std::endl;
 	  }
@@ -152,7 +149,8 @@ int main(int argc, char *argv[])
     p++;
   }
 
-  clusterer.kMeansCluster(1);
+  // clusterer.kMeansCluster(1);
+  clusterer.initializeCOMNAP();
 
   outFile->cd();
   for(int clusterInd=0; clusterInd < K; clusterInd++){
@@ -172,16 +170,16 @@ int main(int argc, char *argv[])
 
   std::cout << "Made clusterTree with " << clusterTree->GetEntries() << " entries." << std::endl;
 
-  
 
 
 
-  
+
+
   outFile->Write();
   outFile->Close();
 
-  
-  
-  
+
+
+
   return 0;
 }
