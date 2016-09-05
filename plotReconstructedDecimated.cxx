@@ -97,8 +97,9 @@ int main(int argc, char *argv[])
     fileName = TString::Format("filter260-370-400-762-5peaks/reconstructDecimatedPlots_%d_*.root", run);
     eventSummaryChain->Add(fileName);
 
+    fileName = TString::Format("finalDataQuality/slimTreePlots_%d_*.root", run);
     // fileName = TString::Format("finalDataQuality/makeDecimatedDataQualityTreesPlots_%d_*.root", run);
-    fileName = TString::Format("filter260-370-400-762/makeDecimatedDataQualityTreesPlots_%d_*.root", run);
+    // fileName = TString::Format("filter260-370-400-762/makeDecimatedDataQualityTreesPlots_%d_*.root", run);
     dataQualityChain->Add(fileName);
 
   }
@@ -125,14 +126,21 @@ int main(int argc, char *argv[])
   headChain->SetBranchAddress("header", &header);
   Adu5Pat* pat = NULL;
   gpsChain->SetBranchAddress("pat", &pat);
-  Double_t peakToPeak[NUM_POL][NUM_SEAVEYS];
-  dataQualityChain->SetBranchAddress("peakToPeak", peakToPeak);
+  // Double_t peakToPeak[NUM_POL][NUM_SEAVEYS];
+  // dataQualityChain->SetBranchAddress("peakToPeak", peakToPeak);
   UInt_t eventNumberDQ;
   dataQualityChain->SetBranchAddress("eventNumber", &eventNumberDQ);
-  Double_t maxVolts[NUM_POL][NUM_SEAVEYS];
-  dataQualityChain->SetBranchAddress("maxVolts", maxVolts);
-  Double_t minVolts[NUM_POL][NUM_SEAVEYS];
-  dataQualityChain->SetBranchAddress("minVolts", minVolts);
+  // Double_t maxVolts[NUM_POL][NUM_SEAVEYS];
+  // dataQualityChain->SetBranchAddress("maxVolts", maxVolts);
+  // Double_t minVolts[NUM_POL][NUM_SEAVEYS];
+  // dataQualityChain->SetBranchAddress("minVolts", minVolts);
+
+  Double_t maxPeakToPeakRatio[NUM_POL];
+  dataQualityChain->SetBranchAddress("maxPeakToPeakRatio", maxPeakToPeakRatio);
+  Double_t theMaxVolts[NUM_POL];
+  dataQualityChain->SetBranchAddress("theMaxVolts", theMaxVolts);
+  Double_t theMinVolts[NUM_POL];
+  dataQualityChain->SetBranchAddress("theMinVolts",theMinVolts);
 
 
   AnitaEventSummary* eventSummary = NULL;
@@ -339,17 +347,13 @@ int main(int argc, char *argv[])
 								      numBinsPhi, 10, 40,
 								      2*numBinsTheta, -180, 180);
 
-  TH2D* hPeakSizes = new TH2D("hPeakSizes", "Map peaks; P1; P2", 1024, 0, 1, 1024, 0, 1);
-  TH2D* hPeakRatio = new TH2D("hPeakRatio", "Map peaks; P1; P2/P1/", 1024, 0, 1, 1024, 0, 2);
-  TH2D* hDeltaPeakVsPeak = new TH2D("hDeltaPeakVsPeak", "Map peaks; P1; P2", 1024, -1, 1, 1024, 0, 1);
-  TH2D* hDeltaPeakVsPeak2 = new TH2D("hDeltaPeakVsPeak2", "Map peaks; P1; (P1-P2)/P1 ", 1024, -1, 1, 1024, 0, 1);
-  TH1D* hDeltaPeak = new TH1D("hDeltaPeak", "Map peaks; P1-P2", 1024, -1, 1);
-  TH1D* hDeltaPeak2 = new TH1D("hDeltaPeak2", "Map peaks; p1/(P1-P2)", 1024, -1, 1);
+  TH2D* hPeakRatio = new TH2D("hPeakRatio", "Map peaks; P1; P2/P1", 1024, 0, 1, 1024, 0, 1);
 
   std::cerr << "building index" << std::endl;
   headChain->BuildIndex("eventNumber");
-  dataQualityChain->BuildIndex("eventNumber");
+  // dataQualityChain->BuildIndex("eventNumber");
   std::cerr << "done" << std::endl;
+
 
   for(Long64_t entry = startEntry; entry < maxEntry; entry++){
     eventSummaryChain->GetEntry(entry);
@@ -365,7 +369,6 @@ int main(int argc, char *argv[])
       if(eventSummary->peak[AnitaPol::kHorizontal][0].value > eventSummary->peak[AnitaPol::kVertical][0].value){
 	pol = AnitaPol::kHorizontal;
       }
-
 
 
       // timing selection...
@@ -386,40 +389,39 @@ int main(int argc, char *argv[])
       }
 
 
-      // dataQualityChain->GetEntry(entry);
-      dataQualityChain->GetEntryWithIndex(eventSummary->eventNumber);
 
+      dataQualityChain->GetEntry(entry);
       if(eventSummary->eventNumber != eventNumberDQ){
 	std::cerr << "???" << eventSummary->eventNumber << "\t" << eventNumberDQ << std::endl;
       }
 
 
-      Double_t maxMaxVolts, minMinVolts, absSumMaxMin;
       AnalysisCuts::Status_t surfSaturation;
-      surfSaturation = AnalysisCuts::applySurfSaturationCut(maxVolts, minVolts, maxMaxVolts, minMinVolts, absSumMaxMin);
+      Double_t absSumMaxMin = theMaxVolts[pol] + theMinVolts[pol];
+      surfSaturation = AnalysisCuts::applySurfSaturationCut(theMaxVolts[pol], theMinVolts[pol], absSumMaxMin);
 
       if(cutStep >= 1 && surfSaturation==AnalysisCuts::kFail){
 	p.inc(entry, maxEntry);
 	continue;
       }
-      hMaxVolts->Fill(maxMaxVolts);
-      hMinVolts->Fill(minMinVolts);
+      hMaxVolts->Fill(theMaxVolts[pol]);
+      hMinVolts->Fill(theMinVolts[pol]);
       hAbsSumMaxMin->Fill(absSumMaxMin);
 
-
-      Double_t maxRatio;
       AnalysisCuts::Status_t selfTriggeredBlastCut;
-      selfTriggeredBlastCut = AnalysisCuts::applyBottomToTopRingPeakToPeakRatioCut(pol, peakToPeak[pol], maxRatio);
+      selfTriggeredBlastCut = AnalysisCuts::applyBottomToTopRingPeakToPeakRatioCut(maxPeakToPeakRatio[pol]);
       if(cutStep >= 1 && selfTriggeredBlastCut==AnalysisCuts::kFail){
 	p.inc(entry, maxEntry);
 	continue;
       }
-      hMaxBottomToTopPeakToPeakRatio->Fill(maxRatio);
+      hMaxBottomToTopPeakToPeakRatio->Fill(maxPeakToPeakRatio[pol]);
 
 
-      if(maxRatio < 1){
+      if(maxPeakToPeakRatio[pol] < 0.9){
 	std::cerr << "low ratio: " << header->run << "\t" << header->eventNumber << std::endl;
       }
+
+
 
       // Get event info
       const int peakInd = 0;
@@ -429,8 +431,6 @@ int main(int argc, char *argv[])
       Double_t recoThetaDeg = eventSummary->peak[pol][peakInd].theta;
       Double_t imagePeak = eventSummary->peak[pol][peakInd].value;
       Double_t hilbertPeak = eventSummary->coherent[pol][peakInd].peakHilbert;
-
-
 
 
       // CUT FLOW
@@ -518,6 +518,12 @@ int main(int argc, char *argv[])
 
 
 
+
+
+
+
+
+
       if(imagePeak < cutImage || hilbertPeak < cutHilbert){
 	p.inc(entry, maxEntry);
 	continue;
@@ -582,11 +588,6 @@ int main(int argc, char *argv[])
       Double_t p1 = eventSummary->peak[pol][0].value;
       Double_t p2 = eventSummary->peak[pol][1].value;
 
-      hPeakSizes->Fill(p1, p2);
-      hDeltaPeakVsPeak->Fill(p1, p1 - p2);
-      hDeltaPeakVsPeak2->Fill(p1, (p1-p2)/p1);
-      hDeltaPeak->Fill(p1-p2);
-      hDeltaPeak2->Fill((p1-p2)/p1);
       hPeakRatio->Fill(p1, p2/p1);
 
       // reconstruction data quality
