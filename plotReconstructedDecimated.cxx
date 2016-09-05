@@ -348,6 +348,7 @@ int main(int argc, char *argv[])
 								      2*numBinsTheta, -180, 180);
 
   TH2D* hPeakRatio = new TH2D("hPeakRatio", "Map peaks; P1; P2/P1", 1024, 0, 1, 1024, 0, 1);
+  TH2D* hPeakRatio2 = new TH2D("hPeakRatio2", "Map peaks; #delta#phi peaks; P2/P1", 1024, -180, 180, 1024, 0, 1);
 
   std::cerr << "building index" << std::endl;
   headChain->BuildIndex("eventNumber");
@@ -388,24 +389,28 @@ int main(int argc, char *argv[])
 	continue;
       }
 
-
-
       dataQualityChain->GetEntry(entry);
+
       if(eventSummary->eventNumber != eventNumberDQ){
-	std::cerr << "???" << eventSummary->eventNumber << "\t" << eventNumberDQ << std::endl;
+	std::cerr << "??? " << std::endl << header->run << "\t"
+		  << eventSummary->eventNumber << "\t"
+		  << eventNumberDQ << "\t"
+		  << header->eventNumber << std::endl;
       }
 
 
       AnalysisCuts::Status_t surfSaturation;
-      Double_t absSumMaxMin = theMaxVolts[pol] + theMinVolts[pol];
-      surfSaturation = AnalysisCuts::applySurfSaturationCut(theMaxVolts[pol], theMinVolts[pol], absSumMaxMin);
+      Double_t maxV = TMath::Max(theMaxVolts[0],  theMaxVolts[1]);
+      Double_t minV = TMath::Max(theMinVolts[0],  theMinVolts[1]);
+      Double_t absSumMaxMin = maxV + minV;
+      surfSaturation = AnalysisCuts::applySurfSaturationCut(maxV, minV, absSumMaxMin);
 
       if(cutStep >= 1 && surfSaturation==AnalysisCuts::kFail){
 	p.inc(entry, maxEntry);
 	continue;
       }
-      hMaxVolts->Fill(theMaxVolts[pol]);
-      hMinVolts->Fill(theMinVolts[pol]);
+      hMaxVolts->Fill(maxV);
+      hMinVolts->Fill(minV);
       hAbsSumMaxMin->Fill(absSumMaxMin);
 
       AnalysisCuts::Status_t selfTriggeredBlastCut;
@@ -501,8 +506,6 @@ int main(int argc, char *argv[])
 
 
 
-
-
       AnalysisCuts::Status_t thermalCut;
       Double_t fisher;
       thermalCut = AnalysisCuts::applyThermalBackgroundCut(imagePeak, hilbertPeak, fisher);
@@ -511,9 +514,51 @@ int main(int argc, char *argv[])
 	continue;
       }
 
-      // if(imagePeak < 0.075 || (imagePeak < 0.3 && hilbertPeak > 200)){
-      // 	std::cout << std::endl << header->run << "\t" << header->eventNumber << "\t" << imagePeak << "\t" << hilbertPeak << "\t" << fisher << std::endl;
-      // }
+      if(imagePeak < 0.075 || (imagePeak < 0.3 && hilbertPeak > 200)){
+      	std::cout << std::endl << header->run << "\t" << header->eventNumber << "\t" << imagePeak << "\t" << hilbertPeak << "\t" << fisher << std::endl;
+      }
+
+
+
+
+      AnalysisCuts::Status_t peakRatioCut;
+      Double_t p1 = eventSummary->peak[pol][0].value;
+      Double_t p2 = eventSummary->peak[pol][1].value;
+      Double_t peakRatio;
+      peakRatioCut = AnalysisCuts::applyImagePeakRatioCut(p1, p2, peakRatio);
+      if(cutStep>=5 && peakRatioCut==AnalysisCuts::kFail){
+	p.inc(entry, maxEntry);
+	continue;
+      }
+
+      hPeakRatio->Fill(p1, p2/p1);
+      hPeakRatio2->Fill(RootTools::getDeltaAngleDeg(eventSummary->peak[pol][0].phi,
+						    eventSummary->peak[pol][1].phi), p2/p1);
+
+
+
+      AnalysisCuts::Status_t thetaAngleCut;
+      thetaAngleCut = AnalysisCuts::applyThetaAngleCut(recoThetaDeg);
+      if(cutStep>=6 && thetaAngleCut==AnalysisCuts::kFail){
+	p.inc(entry, maxEntry);
+	continue;
+      }
+      hThetaDeg->Fill(recoThetaDeg);
+      hPeakElevation->Fill(header->realTime,
+			   recoThetaDeg);
+
+      pPeakElevation->Fill(header->realTime,
+			   recoThetaDeg,
+			   imagePeak);
+
+
+
+
+
+
+      if(imagePeak < 0.075 || (imagePeak < 0.3 && hilbertPeak > 200)){
+      	std::cout << std::endl << header->run << "\t" << header->eventNumber << "\t" << imagePeak << "\t" << hilbertPeak << "\t" << fisher << std::endl;
+      }
 
 
 
@@ -558,8 +603,6 @@ int main(int argc, char *argv[])
       hImagePeak1Peak2->Fill(imagePeak, eventSummary->peak[pol][peakInd+1].value);
 
 
-      hThetaDeg->Fill(recoThetaDeg);
-
       // std::cerr << solarThetaDeg << "\t" << solarPhiDeg << "\t"
       // 	  << deltaSolarThetaDeg << "\t" << deltaSolarPhiDeg << "\t"
       // 	  << std::endl;
@@ -569,15 +612,10 @@ int main(int argc, char *argv[])
       // event info (peak direction, and value)
       hPeakHeading->Fill(header->realTime,
 			 directionWrtNorth);
-      hPeakElevation->Fill(header->realTime,
-			   recoThetaDeg);
+
       pPeakHeading->Fill(header->realTime,
 			 directionWrtNorth,
 			 imagePeak);
-      pPeakElevation->Fill(header->realTime,
-			   recoThetaDeg,
-			   imagePeak);
-
       hImagePeakHilbertPeak->Fill(imagePeak,
 				  hilbertPeak);
 
@@ -585,10 +623,6 @@ int main(int argc, char *argv[])
 			   imagePeak);
       hHilbertPeakTime->Fill(header->realTime,
 			     hilbertPeak);
-      Double_t p1 = eventSummary->peak[pol][0].value;
-      Double_t p2 = eventSummary->peak[pol][1].value;
-
-      hPeakRatio->Fill(p1, p2/p1);
 
       // reconstruction data quality
       hImagePeakPhi->Fill(recoPhiDeg, imagePeak);

@@ -22,7 +22,7 @@ CMakeFiles/
 *.cmake
 *.json
 cat *.s
-
+*/
 definingThermalCut/defineThermalCut
 definingThermalCut/plotDefineThermalCut
 examineCoherentlySummedWaveforms

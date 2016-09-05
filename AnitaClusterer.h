@@ -223,7 +223,7 @@ public:
 
   void initializeBaseList();
   // less than...
-  Double_t logLikelihoodCut = 100;
+  Double_t logLikelihoodCut;
 
   Int_t getNumClusters(){
     return numClusters;
@@ -250,9 +250,8 @@ private:
   Int_t numIter;
   Int_t numClusters;
 
-  Int_t numCallsToRecursive = 0;
+  Int_t numCallsToRecursive;
 
-  const double minimalImprovement = 0.01;
   std::vector<Point> points; // only variables relevant to clustering
   std::vector<Adu5Pat*> pats;
   std::vector<Cluster> clusters; // only variables relevant to clustering
@@ -263,6 +262,7 @@ private:
   std::vector<Double_t> deltaTheta;
   std::vector<Double_t> deltaPhi;
   Bool_t initialized;
+  Double_t minimalImprovement;
 
 
   AntarcticaMapPlotter* amp;

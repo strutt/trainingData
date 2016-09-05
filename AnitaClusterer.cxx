@@ -14,8 +14,9 @@ AnitaClusterer::AnitaClusterer(Int_t nClusters, Int_t numIterations, Int_t appro
 
   initialized = false;
   llCut = 2000;
-
-
+  logLikelihoodCut = 100;
+  numCallsToRecursive = 0;
+  minimalImprovement  = 0.01;
   // can use this to move cluster around surface, 3D positions correctly becomes 2D problem
   surfaceModel = RampdemReader::Instance();
   amp = new AntarcticaMapPlotter();
@@ -1063,10 +1064,6 @@ TTree* AnitaClusterer::makeClusterSummaryTree(TFile* fOut){
     //   // clusteredEvent->eventPosition[dim] = point.centre[dim];
     //   clusteredEvent->eventPosition[dim] = point.centre[dim];
     // }
-    // geom->getLatLonAltFromCartesian(clusteredEvent->eventPosition,\
-    // 				    clusteredEvent->eventLat,\
-    // 				    clusteredEvent->eventLon,\
-    // 				    clusteredEvent->eventAlt);
     clusteredEvent->eventLat = point.latitude;
     clusteredEvent->eventLon = point.longitude;
     clusteredEvent->eventAlt = point.altitude;

@@ -331,6 +331,7 @@ int main(int argc, char *argv[])
 								      2*numBinsTheta, -180, 180);
 
   TH2D* hPeakRatio = new TH2D("hPeakRatio", "Map peaks; P1; P2/P1/", 1024, 0, 1, 1024, 0, 1);
+  TH2D* hPeakRatio2 = new TH2D("hPeakRatio2", "Map peaks; #delta#phi peaks; P2/P1", 1024, -180, 180, 1024, 0, 1);
 
 
   std::cerr << "building index" << std::endl;
@@ -500,6 +501,37 @@ int main(int argc, char *argv[])
 
 
 
+      AnalysisCuts::Status_t peakRatioCut;
+      Double_t p1 = eventSummary->peak[pol][0].value;
+      Double_t p2 = eventSummary->peak[pol][1].value;
+      Double_t peakRatio;
+      peakRatioCut = AnalysisCuts::applyImagePeakRatioCut(p1, p2, peakRatio);
+      if(cutStep>=5 && peakRatioCut==AnalysisCuts::kFail){
+	p.inc(entry, maxEntry);
+	continue;
+      }
+
+      hPeakRatio->Fill(p1, p2/p1);
+      hPeakRatio2->Fill(RootTools::getDeltaAngleDeg(eventSummary->peak[pol][0].phi,
+						    eventSummary->peak[pol][1].phi), p2/p1);
+
+
+
+      AnalysisCuts::Status_t thetaAngleCut;
+      thetaAngleCut = AnalysisCuts::applyThetaAngleCut(recoThetaDeg);
+      if(cutStep>=6 && thetaAngleCut==AnalysisCuts::kFail){
+	p.inc(entry, maxEntry);
+	continue;
+      }
+      hThetaDeg->Fill(recoThetaDeg);
+      hPeakElevation->Fill(header->realTime,
+			   recoThetaDeg);
+
+      pPeakElevation->Fill(header->realTime,
+			   recoThetaDeg,
+			   imagePeak);
+
+
 
 
 
@@ -535,8 +567,6 @@ int main(int argc, char *argv[])
 
       hImagePeak1Peak2->Fill(imagePeak, eventSummary->peak[pol][peakInd+1].value);
 
-      hThetaDeg->Fill(recoThetaDeg);
-
       // std::cerr << solarThetaDeg << "\t" << solarPhiDeg << "\t"
       // 	  << deltaSolarThetaDeg << "\t" << deltaSolarPhiDeg << "\t"
       // 	  << std::endl;
@@ -544,8 +574,6 @@ int main(int argc, char *argv[])
       // event info (peak direction, and value)
       hPeakHeading->Fill(header->realTime,
 			 directionWrtNorth);
-      hPeakElevation->Fill(header->realTime,
-			   recoThetaDeg);
       pPeakHeading->Fill(header->realTime,
 			 directionWrtNorth,
 			 imagePeak);
@@ -560,13 +588,6 @@ int main(int argc, char *argv[])
 			   imagePeak);
       hHilbertPeakTime->Fill(header->realTime,
 			     hilbertPeak);
-
-      // std::cout << clusteredEvent->eventNumber  << "\t" << eventSummary->eventNumber << "\t";
-      Double_t p1 = eventSummary->peak[pol][0].value;
-      Double_t p2 = eventSummary->peak[pol][1].value;
-
-      hPeakRatio->Fill(p1, p2/p1);
-
 
       // reconstruction data quality
       hImagePeakPhi->Fill(recoPhiDeg, imagePeak);

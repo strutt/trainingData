@@ -57,7 +57,8 @@ int main(int argc, char *argv[]){
     // fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/calEventFile%d.root", run, run);
     // MagicDisplay *magicPtr = new MagicDisplay("https://anita:IceRadio@www.hep.ucl.ac.uk/uhen/anita/private/anita3/flight1415/root/",run,WaveCalType::kDefault);
 
-    fileName = TString::Format("https://anita:IceRadio@www.hep.ucl.ac.uk/uhen/anita/private/anita3/flight1415/root/run%d/calEventFile%d.root", run, run);
+    fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/calEventFile%d.root", run, run);
+    // fileName = TString::Format("https://anita:IceRadio@www.hep.ucl.ac.uk/uhen/anita/private/anita3/flight1415/root/run%d/calEventFile%d.root", run, run);
     calEventChain->Add(fileName);
   }
 
@@ -158,16 +159,17 @@ int main(int argc, char *argv[]){
 
     headChain->GetEntry(entry);
 
-    // Int_t isMinBias = RootTools::isMinBiasSampleEvent(header);
-    // if(isMinBias == 0){ // don't want to do min bias events twice
     calEventChain->GetEntryWithIndex(header->eventNumber);
 
     UsefulAnitaEvent* usefulEvent = new UsefulAnitaEvent(calEvent);
     // usefulEvent->setAlfaFilterFlag(false);
 
+    if(usefulEvent->eventNumber!=header->eventNumber){
+      std::cerr << "how did this happen? " << usefulEvent->eventNumber << "\t"
+		<< header->eventNumber << std::endl;
+    }
+
     eventNumber = header->eventNumber;
-
-
 
     for(int pol=0; pol<NUM_POL; pol++){
       theMaxVolts[pol] = 0;

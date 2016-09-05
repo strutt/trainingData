@@ -79,8 +79,11 @@ void plotDefineThermalCut(){
   fBackgroundFit->SetNpx(1000);
   fBackgroundFit->SetLineStyle(3);
   fBackgroundFit->SetLineColor(kBlue);
-  const double startFit = -1.6;
-  const double endFit = -1.25;
+  const double startFit = -1.25;
+  const double endFit = 2;
+  // const double startFit = -1.6;
+  // const double endFit = -1.25;
+
   hBackgroundInt->Fit(fBackgroundFit,"N", "", startFit, endFit);
   fBackgroundFit->Draw("lsame");
 
