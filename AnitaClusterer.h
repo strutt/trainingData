@@ -23,7 +23,8 @@
 #include "Math/Functor.h"
 
 #include "RootTools.h"
-#include "COMNAP.h"
+#include "BaseList.h"
+#include "AntarcticaMapPlotter.h"
 
 #include "assert.h"
 
@@ -51,7 +52,11 @@ public:
   Double_t eventAlt; // altitude of posiiton of event
 
   Double_t distanceToClusterCentroid; // distance (km) from point to centroid
-  Double_t errorToClusteredCentroid; // distance in some normalized error units TODO
+  Double_t minusTwoLogLikelihood; // distance in some normalized error units TODO
+  Double_t deltaThetaDeg; // angular distance to cluster centre
+  Double_t deltaPhiDeg; // angular distance to cluster centre
+  Double_t thetaDeg; // reconstruction angle
+  Double_t phiDeg; // reconstruction angle
 
   Int_t inCluster; // ID of cluster
   Int_t numEventsInCluster; // number of events in the cluster containing this event
@@ -184,7 +189,7 @@ public:
     }
 
 
-    explicit Cluster(const COMNAP2014::base& base) {
+    explicit Cluster(const BaseList::base& base) {
       latitude = base.latitude;
       longitude = base.longitude;
       longitude = base.longitude;
@@ -216,8 +221,20 @@ public:
   TTree* makeClusterSummaryTree(TFile* fOut);
 
 
-  void initializeCOMNAP();
+  void initializeBaseList();
+  // less than...
+  Double_t logLikelihoodCut = 100;
 
+  Int_t getNumClusters(){
+    return numClusters;
+  }
+
+  // Int_t histogramUnclusteredEvents(double& minLat, double& maxLat, double& minLon, double& maxLon);
+  Int_t histogramUnclusteredEvents(Int_t& globalMaxBin);
+  void recursivelyAddClusters(Int_t minBinContent);
+
+
+  double llCut;
 private:
 
   void kMeansPlusPlusInitialize(Int_t seed = 2016);
@@ -228,8 +245,12 @@ private:
   Double_t assignErrorValues();
   Cluster seedCluster(Point& point);
 
+  std::vector<TH2D*> hUnclustereds;
+
   Int_t numIter;
   Int_t numClusters;
+
+  Int_t numCallsToRecursive = 0;
 
   const double minimalImprovement = 0.01;
   std::vector<Point> points; // only variables relevant to clustering
@@ -244,10 +265,14 @@ private:
   Bool_t initialized;
 
 
+  AntarcticaMapPlotter* amp;
   RampdemReader* surfaceModel;
   std::vector<Int_t> pointsInCluster;
   Int_t theMinCluster;
   Double_t sumOfAngularErrorsFromLatLon(const Double_t* latLon);
+  std::vector<Int_t> ampBinNumbers;
+  std::vector<Int_t> ampBinNumbers2;
+
 
 
 };

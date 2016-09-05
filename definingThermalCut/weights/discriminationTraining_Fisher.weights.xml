@@ -4,11 +4,11 @@
     <Info name="TMVA Release" value="4.2.1 [262657]"/>
     <Info name="ROOT Release" value="6.06/06 [394758]"/>
     <Info name="Creator" value="benstrutt"/>
-    <Info name="Date" value="Sat Aug 27 18:37:30 2016"/>
+    <Info name="Date" value="Mon Sep  5 00:00:24 2016"/>
     <Info name="Host" value="Darwin macavity-the-mystery-cat.local 14.5.0 Darwin Kernel Version 14.5.0: Thu Jun 16 19:58:21 PDT 2016; root:xnu-2782.50.4~1/RELEASE_X86_64 x86_64"/>
     <Info name="Dir" value="/Users/benstrutt/UCL/ANITA/anita3Analysis/trainingData/definingThermalCut"/>
-    <Info name="Training events" value="94625"/>
-    <Info name="TrainingTime" value="3.25570107e-02"/>
+    <Info name="Training events" value="118241"/>
+    <Info name="TrainingTime" value="3.86428833e-02"/>
     <Info name="AnalysisType" value="Classification"/>
   </GeneralInfo>
   <Options>
@@ -21,8 +21,8 @@
     <Option name="Method" modified="Yes">Fisher</Option>
   </Options>
   <Variables NVar="2">
-    <Variable VarIndex="0" Expression="imagePeak" Label="imagePeak" Title="imagePeak" Unit="" Internal="imagePeak" Type="D" Min="3.42910327e-02" Max="4.37673002e-01"/>
-    <Variable VarIndex="1" Expression="hilbertPeak" Label="hilbertPeak" Title="hilbertPeak" Unit="" Internal="hilbertPeak" Type="D" Min="2.08259296e+01" Max="2.59698212e+02"/>
+    <Variable VarIndex="0" Expression="imagePeak" Label="imagePeak" Title="imagePeak" Unit="" Internal="imagePeak" Type="D" Min="3.27819064e-02" Max="4.37673002e-01"/>
+    <Variable VarIndex="1" Expression="hilbertPeak" Label="hilbertPeak" Title="hilbertPeak" Unit="" Internal="hilbertPeak" Type="D" Min="2.00961781e+01" Max="2.59698212e+02"/>
   </Variables>
   <Spectators NSpec="0"/>
   <Classes NClass="2">
@@ -32,8 +32,8 @@
   <Transformations NTransformations="0"/>
   <MVAPdfs/>
   <Weights NCoeff="3">
-    <Coefficient Index="0" Value="-2.8144829260151321e+00"/>
-    <Coefficient Index="1" Value="1.5792919711775749e+01"/>
-    <Coefficient Index="2" Value="7.8331456284761458e-03"/>
+    <Coefficient Index="0" Value="-2.8046911030775683e+00"/>
+    <Coefficient Index="1" Value="1.5906093455427481e+01"/>
+    <Coefficient Index="2" Value="7.4292211519862011e-03"/>
   </Weights>
 </MethodSetup>

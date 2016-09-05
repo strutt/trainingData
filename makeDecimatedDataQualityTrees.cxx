@@ -47,14 +47,17 @@ int main(int argc, char *argv[]){
   TChain* headChain = new TChain("headTree");
   // TChain* gpsChain = new TChain("adu5PatTree");
   TChain* calEventChain = new TChain("eventTree");
-  
+
   for(Int_t run=firstRun; run<=lastRun; run++){
     // TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/headFile%d.root", run, run);
     TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/decimatedHeadFile%d.root", run, run);
     headChain->Add(fileName);
     // fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/gpsEvent%d.root", run, run);
     // gpsChain->Add(fileName);
-    fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/calEventFile%d.root", run, run);
+    // fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/calEventFile%d.root", run, run);
+    // MagicDisplay *magicPtr = new MagicDisplay("https://anita:IceRadio@www.hep.ucl.ac.uk/uhen/anita/private/anita3/flight1415/root/",run,WaveCalType::kDefault);
+
+    fileName = TString::Format("https://anita:IceRadio@www.hep.ucl.ac.uk/uhen/anita/private/anita3/flight1415/root/run%d/calEventFile%d.root", run, run);
     calEventChain->Add(fileName);
   }
 
@@ -70,7 +73,7 @@ int main(int argc, char *argv[]){
     std::cerr << "Unable to find calEvent files!" << std::endl;
     return 1;
   }
-  
+
   calEventChain->BuildIndex("eventNumber");
   // gpsChain->BuildIndex("eventNumber");
 
@@ -89,13 +92,13 @@ int main(int argc, char *argv[]){
     return 1;
   }
 
-    
+
   TTree* dataQualityTree = new TTree("dataQualityTree", "dataQualityTree");
   // AnitaEventSummary* dataQuality = new AnitaEventSummary();
 
   UInt_t eventNumber = 0;
   dataQualityTree->Branch("eventNumber", &eventNumber);
-  
+
   Double_t peakToPeak[NUM_POL][NUM_SEAVEYS];
   dataQualityTree->Branch("peakToPeak",
 			  peakToPeak,
@@ -124,8 +127,8 @@ int main(int argc, char *argv[]){
 			  minVolts,
 			  TString::Format("minVolts[%d][%d]/D",
 					  NUM_POL, NUM_SEAVEYS));
-  
-  
+
+
   Long64_t nEntries = headChain->GetEntries();
   Long64_t maxEntry = 0; //2500;
   Long64_t startEntry = 0;
@@ -151,7 +154,7 @@ int main(int argc, char *argv[]){
 
 	  TGraph* gr = usefulEvent->getGraph(ant, (AnitaPol::AnitaPol_t) pol);
 
-	  
+
 	  numPoints[pol][ant] = gr->GetN();
 
 	  Double_t maxY;
@@ -174,7 +177,7 @@ int main(int argc, char *argv[]){
 	      minVolts[pol][ant] = v;
 	    }
 	  }
-	  
+
 	  delete gr;
 	}
       }
@@ -186,7 +189,7 @@ int main(int argc, char *argv[]){
   }
 
   outFile->Write();
-  outFile->Close();  
-  
+  outFile->Close();
+
   return 0;
 }

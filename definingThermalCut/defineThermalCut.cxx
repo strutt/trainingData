@@ -19,13 +19,13 @@ int main(int argc, char *argv[]){
     std::cerr << "Error! Unable to open output file " << outFileName.Data() << std::endl;
     return 1;
   }
-  
+
   TMVA::Factory* factory = new TMVA::Factory("discriminationTraining", outFile, "");
   TChain* signalChain = new TChain("signalTree");
   signalChain->Add("makeSignalTreePlots_*.root");
   TChain* backgroundChain = new TChain("thermalTree");
   backgroundChain->Add("makeThermalBackgroundTreePlots_*.root");
-  
+
   // get the TTree objects from the input file
 
   // int nSig = signalChain->GetEntries();
@@ -51,14 +51,16 @@ int main(int argc, char *argv[]){
 
   // Use half of the events for training, half for testing
 
-  // TString splitOpt = "NSigTrain=0:NBkgTrain=0:NSigTest=0:NBkgTest=0";
+  // TString splitOpt = TString::Format("NSigTrain=%lld:NBkgTrain=%lld:NSigTest=0:NBkgTest=0",
+  // 				     signalChain->GetEntries(),
+  // 				     backgroundChain->GetEntries());
   // this version no longer works in 5.27 -- replace  7.12.10 GDC
   // factory->PrepareTrainingAndTestTree(mycut, splitOpt);
   factory->PrepareTrainingAndTestTree(mycut, 0, 0, 0, 0);
 
-  // Book MVA methods (see TMVA manual).  
+  // Book MVA methods (see TMVA manual).
 
-  factory->BookMethod(TMVA::Types::kFisher, "Fisher", "H:!V:Fisher");   
+  factory->BookMethod(TMVA::Types::kFisher, "Fisher", "H:!V:Fisher");
   // factory->BookMethod(TMVA::Types::kMLP, "MLP", "H:!V:HiddenLayers=3");
 
   // Train, test and evaluate all methods
@@ -67,7 +69,7 @@ int main(int argc, char *argv[]){
   factory->TestAllMethods();
   // Following line used to work, causes crash with ROOT 5.20.00, should
   // be fixed in root 5.21, see https://savannah.cern.ch/bugs/?40468
-  factory->EvaluateAllMethods();    
+  factory->EvaluateAllMethods();
 
   // Save the output and finish up
 

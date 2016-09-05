@@ -1,6 +1,27 @@
 #include "AnitaClusterer.h"
 
 
+AnitaClusterer::AnitaClusterer(Int_t nClusters, Int_t numIterations, Int_t approxNumPoints){
+
+  numIter = numIterations;
+  numClusters = nClusters;
+  clusters.reserve(numClusters);
+
+  points.reserve(approxNumPoints);
+  pats.reserve(approxNumPoints);
+  eventNumbers.reserve(approxNumPoints);
+  runs.reserve(approxNumPoints);
+
+  initialized = false;
+  llCut = 2000;
+
+
+  // can use this to move cluster around surface, 3D positions correctly becomes 2D problem
+  surfaceModel = RampdemReader::Instance();
+  amp = new AntarcticaMapPlotter();
+}
+
+
 
 // for debugging
 inline void prettyPrint(const int n, const double* array){
@@ -53,12 +74,9 @@ inline Double_t getDistSq(const AnitaClusterer::Point& point, const AnitaCluster
 //   return dThetaSq*dThetaSq + dPhiSq*dPhiSq;
 // }
 
-
-
-inline Double_t getAngDistSq(const AnitaClusterer::Point& point, const AnitaClusterer::Cluster& cluster, const Adu5Pat* pat){
+inline void getDeltaThetaDegDeltaPhiDegCluster(const AnitaClusterer::Point& point, const AnitaClusterer::Cluster& cluster, const Adu5Pat* pat, Double_t& deltaThetaDeg, Double_t& deltaPhiDeg){
 
   UsefulAdu5Pat usefulPat(pat);
-  // Double_t distM = usefulPat.getDistanceFromSource(cluster.latitude, cluster.longitude, cluster.altitude);
 
   Double_t thetaWave, phiWave;
   usefulPat.getThetaAndPhiWave(cluster.longitude, cluster.latitude,cluster.altitude,
@@ -66,29 +84,120 @@ inline Double_t getAngDistSq(const AnitaClusterer::Point& point, const AnitaClus
   Double_t thetaDeg = -1*TMath::RadToDeg()*thetaWave;
   Double_t phiDeg = TMath::RadToDeg()*phiWave;
 
-  Double_t dThetaSq = (thetaDeg - point.thetaDeg)/point.sigmaThetaDeg;
-  Double_t dPhiSq = RootTools::getDeltaAngleDeg(phiDeg, point.phiDeg)/point.sigmaPhiDeg;
+  deltaThetaDeg = (thetaDeg - point.thetaDeg);
+  deltaPhiDeg = RootTools::getDeltaAngleDeg(phiDeg, point.phiDeg)/point.sigmaPhiDeg;
+}
+
+
+
+inline Double_t getAngDistSq(const AnitaClusterer::Point& point, const AnitaClusterer::Cluster& cluster, const Adu5Pat* pat){
+
+  Double_t deltaThetaDeg, deltaPhiDeg;
+  getDeltaThetaDegDeltaPhiDegCluster(point, cluster, pat, deltaThetaDeg, deltaPhiDeg);
+
+  // normalized
+  Double_t dThetaSq = deltaThetaDeg/point.sigmaThetaDeg;
+  Double_t dPhiSq = deltaPhiDeg/point.sigmaPhiDeg;
 
   Double_t angSq =  dThetaSq*dThetaSq + dPhiSq*dPhiSq;
-
-
-  // const double maxDistSqLimit = pow(700e3, 2); // point and cluster must be within 700km (squared)
-  // if(getDistSq(point, cluster) > maxDistSqLimit){
-  //   // try to prevent similar things in angular space clustering...
-  //   // when they involve something crazy like going through the earth and are on the other side
-  //   // of the continent
-  //   angSq += 1e9;
-  // }
 
   return angSq;
 }
 
 
 
+
+// Int_t AnitaClusterer::addUnclusteredHistogram(){
+
+// }
+
+Int_t AnitaClusterer::histogramUnclusteredEvents(Int_t& globalMaxBin){
+
+  Int_t addClusterIter =  hUnclustereds.size();
+  TString name = TString::Format("hUnclustered%d", addClusterIter);
+  // const int nBinsLat = 30;
+  // const int nBinsLon = 360;
+  const int nBins = 128;
+  amp->addHistogram(name, name, nBins, nBins);
+  hUnclustereds.push_back(amp->getCurrentHistogram());
+  // find unclustered points
+  ampBinNumbers.clear(); // doesn't clear memory
+  ampBinNumbers.resize((Int_t) points.size()); // so this shouldn't reallocate memory
+  for(int pointInd=0; pointInd < (Int_t) points.size(); pointInd++){
+    const Point& point = points.at(pointInd);
+    if(point.inCluster < 0){
+      ampBinNumbers.at(pointInd) = amp->Fill(point.latitude, point.longitude);
+      // hUnclustereds.back()->Fill(point.longitude, point.latitude);
+    }
+  }
+  globalMaxBin = hUnclustereds.back()->GetMaximumBin();
+
+  Int_t maxEventsInBin = hUnclustereds.back()->GetBinContent(globalMaxBin);
+
+  return maxEventsInBin;
+
+
+}
+
+
+
+void AnitaClusterer::recursivelyAddClusters(Int_t minBinContent){
+  Int_t globalMaxBin;
+  Int_t maxBinVal = histogramUnclusteredEvents(globalMaxBin);
+
+  // std::cout << minLat << "\t" << maxLat << "\t" << minLon << "\t" << maxLon << std::endl;
+
+
+  Int_t counter=0;
+  Cluster cluster;
+  for(int pointInd=0; pointInd < (Int_t) points.size(); pointInd++){
+    const Point& point = points.at(pointInd);
+    if(point.inCluster < 0){
+      if(ampBinNumbers.at(pointInd)==globalMaxBin){
+	for(int dim=0; dim < nDim; dim++){
+	  cluster.centre[dim] += point.centre[dim];
+	}
+	counter++;
+      }
+    }
+  }
+
+  if(counter!=maxBinVal){
+    std::cerr << "Now what?" << std::endl;
+  }
+  if(counter > minBinContent){
+
+    for(int dim=0; dim < nDim; dim++){
+      cluster.centre[dim]/=counter;
+    }
+    AnitaGeomTool* geom = AnitaGeomTool::Instance();
+    geom->getLatLonAltFromCartesian(cluster.centre, cluster.latitude,\
+				    cluster.longitude, cluster.altitude);
+    clusters.push_back(cluster);
+    numClusters = (Int_t) clusters.size();
+
+    assignPointsToClosestCluster();
+
+    std::cout << counter << "\t" << maxBinVal << "\t" << clusters.back().latitude << "\t"
+	      << clusters.back().longitude << "\t" << hUnclustereds.back()->Integral() << std::endl;
+
+    recursivelyAddClusters(minBinContent);
+  }
+
+
+
+
+
+}
+
+
+
+
 void AnitaClusterer::assignPointsToClosestCluster(){
   // -----------------------------------------------------------
   // assign points to closest cluster
-
+  // const double llCut = 30;
+  // const double llCut = 1e99;
   const double maxDistCluster = 800e3; // try 800km
   for(int clusterInd=0; clusterInd < numClusters; clusterInd++){
     clusters.at(clusterInd).numEvents = 0;
@@ -120,23 +229,41 @@ void AnitaClusterer::assignPointsToClosestCluster(){
 	// Double_t d2 = getDistSq(points.at(pointInd), clusters.at(clusterInd));
 	Double_t d2 = getAngDistSq(points.at(pointInd), clusters.at(clusterInd), pats.at(pointInd));
 
-	if(d2 < minD2){
-	  minD2 = d2;
-	  minClusterInd = clusterInd;
+	if(hUnclustereds.size() >= 7 && points.at(pointInd).inCluster < 0 && clusterInd==numClusters-1){
+	  if(distM < maxDistCluster && points.at(pointInd).sigmaPhiDeg == 0){
+	    std::cout << pointInd << "\t" << clusterInd << "\t" << distM/1e3 << "\t" << d2 << "\t"
+		      << points.at(pointInd).sigmaPhiDeg << "\t" << points.at(pointInd).sigmaThetaDeg
+		      << std::endl;
+	  }
+	}
+
+	if(llCut <= 0 || d2 < llCut){
+
+	  if(d2 < minD2){
+	    minD2 = d2;
+	    minClusterInd = clusterInd;
+	  }
 	}
       }
     }
 
+
+
     // assert(minClusterInd > -1 && minClusterInd < numClusters);
-    const double maxSigmaAway = 5*5;
-    if(minD2 >= maxSigmaAway){
-      minClusterInd = -1;
-    }
-    if(minClusterInd < 0 ){
-      std::cerr << "Bollocks \t" << pointInd << std::endl;
-    }
+    // const double maxSigmaAway = 5*5;
+    // if(minD2 >= maxSigmaAway){
+      // minClusterInd = -1;
+    // }
     points.at(pointInd).inCluster = minClusterInd;
-    clusters.at(minClusterInd).numEvents++;
+    if(minClusterInd < 0 ){
+      // std::cerr << "Bollocks \t" << pointInd << std::endl;
+      points.at(pointInd).error = -9999;
+
+    }
+    else{
+      clusters.at(minClusterInd).numEvents++;
+      points.at(pointInd).error = minD2;
+    }
   }
 
   // for(int clusterInd=0; clusterInd < numClusters; clusterInd++){
@@ -156,23 +283,6 @@ void AnitaClusterer::assignPointsToClosestCluster(){
 
 
 
-AnitaClusterer::AnitaClusterer(Int_t nClusters, Int_t numIterations, Int_t approxNumPoints){
-
-  numIter = numIterations;
-  numClusters = nClusters;
-  clusters.reserve(numClusters);
-
-  points.reserve(approxNumPoints);
-  pats.reserve(approxNumPoints);
-  eventNumbers.reserve(approxNumPoints);
-  runs.reserve(approxNumPoints);
-
-  initialized = false;
-
-  // can use this to move cluster around surface, 3D positions correctly becomes 2D problem
-  surfaceModel = RampdemReader::Instance();
-
-}
 
 
 
@@ -195,15 +305,16 @@ size_t AnitaClusterer::addPoint(Adu5Pat* pat, Double_t latitude, Double_t longit
 
 
 
-void AnitaClusterer::initializeCOMNAP(){
+void AnitaClusterer::initializeBaseList(){
 
-  numClusters = (int) COMNAP2014::getNumBases();
+  numClusters = (int) BaseList::getNumBases();
   for(int i=0; i < numClusters; i++){
-    const COMNAP2014::base& base = COMNAP2014::getBase(i);
+    const BaseList::base& base = BaseList::getBase(i);
     clusters.push_back(Cluster(base));
   }
   initialized = true;
   assignPointsToClosestCluster();
+  assignErrorValues();
 }
 
 
@@ -838,10 +949,15 @@ Double_t AnitaClusterer::assignErrorValues(){
   Double_t sumClusterErrors = 0;
   for(int pointInd=0; pointInd < (Int_t) points.size(); pointInd++){
     Int_t clusterInd = points.at(pointInd).inCluster;
-    Double_t d2 = getAngDistSq(points.at(pointInd), clusters.at(clusterInd), pats.at(pointInd));
-    points.at(pointInd).error = d2;
-    clusters.at(clusterInd).totalError += d2;
-    sumClusterErrors += d2;
+    if(clusterInd >= 0){
+      Double_t d2 = getAngDistSq(points.at(pointInd), clusters.at(clusterInd), pats.at(pointInd));
+      points.at(pointInd).error = d2;
+      clusters.at(clusterInd).totalError += d2;
+      sumClusterErrors += d2;
+    }
+    else{
+      points.at(pointInd).error = -9999;
+    }
   }
   return sumClusterErrors;
 }
@@ -892,7 +1008,6 @@ TGraph* AnitaClusterer::makeClusterSummaryTGraph(Int_t clusterInd){
     gr->SetName(name);
     gr->SetTitle(title);
 
-
     // AnitaGeomTool* geom = AnitaGeomTool::Instance();
 
     for(int pointInd=0; pointInd < (Int_t) points.size(); pointInd++){
@@ -922,9 +1037,11 @@ TGraph* AnitaClusterer::makeClusterSummaryTGraph(Int_t clusterInd){
 
 
 
+
+
 TTree* AnitaClusterer::makeClusterSummaryTree(TFile* fOut){
 
-  fOut->cd();
+  std::cout << fOut << std::endl;//->cd();
 
   TTree* clusterTree = new TTree("clusterTree", "Tree of clustered ANITA events");
 
@@ -953,25 +1070,37 @@ TTree* AnitaClusterer::makeClusterSummaryTree(TFile* fOut){
     clusteredEvent->eventLat = point.latitude;
     clusteredEvent->eventLon = point.longitude;
     clusteredEvent->eventAlt = point.altitude;
+    clusteredEvent->thetaDeg = point.thetaDeg;
+    clusteredEvent->phiDeg = point.phiDeg;
 
     Int_t clusterInd = points.at(pointInd).inCluster;
     clusteredEvent->inCluster = clusterInd;
 
-    const Cluster& cluster = clusters.at(clusterInd);
+    if(clusterInd >= 0){
+      const Cluster& cluster = clusters.at(clusterInd);
 
-    clusteredEvent->clusterLat = cluster.latitude;
-    clusteredEvent->clusterLon = cluster.longitude;
-    clusteredEvent->clusterAlt = cluster.altitude;
+      clusteredEvent->clusterLat = cluster.latitude;
+      clusteredEvent->clusterLon = cluster.longitude;
+      clusteredEvent->clusterAlt = cluster.altitude;
 
-    // clusteredEvent->distanceToClusterCentroid = TMath::Sqrt(getDistSq(point, cluster));
-    // clusteredEvent->distanceToClusterCentroid = get(point, cluster));
-    clusteredEvent->errorToClusteredCentroid = points.at(pointInd).error;
+      // Double_t deltaThetaDeg, deltaPhiDeg;
+      getDeltaThetaDegDeltaPhiDegCluster(point, cluster, pats.at(pointInd), \
+					 clusteredEvent->deltaThetaDeg, \
+					 clusteredEvent->deltaPhiDeg);
 
-    clusteredEvent->numEventsInCluster = cluster.numEvents;
+      // clusteredEvent->distanceToClusterCentroid = TMath::Sqrt(getDistSq(point, cluster));
+      // clusteredEvent->distanceToClusterCentroid = get(point, cluster));
+      clusteredEvent->minusTwoLogLikelihood = getAngDistSq(point, cluster, pats.at(pointInd));
+      UsefulAdu5Pat usefulPat(pats.at(pointInd));
+      clusteredEvent->distanceToClusterCentroid = usefulPat.getDistanceFromSource(cluster.latitude, \
+										  cluster.longitude, \
+										  cluster.altitude);
 
-    clusteredEvent->numClusters = numClusters;
-    clusteredEvent->numIterations = numIter;
+      clusteredEvent->numEventsInCluster = cluster.numEvents;
 
+      clusteredEvent->numClusters = numClusters;
+      clusteredEvent->numIterations = numIter;
+    }
     clusterTree->Fill();
     delete clusteredEvent;
   }

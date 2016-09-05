@@ -60,8 +60,7 @@ int main(int argc, char *argv[])
     headChain->Add(fileName);
     fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/gpsEvent%d.root", run, run);
     gpsChain->Add(fileName);
-    fileName = TString::Format("~/UCL/ANITA/anita3Analysis/decimatedDistributions/initialDistributions260MHzAnd370MHzFiltered/initialDistributionsPlots_%d_*.root", run);
-    // fileName = TString::Format("~/UCL/ANITA/anita3Analysis/decimatedDistributions/initialDistributionPlots/initialDistributionsPlots_%d_*.root", run);    
+    fileName = TString::Format("~/UCL/ANITA/anita3Analysis/trainingData/filter260-370-400-762-speed/reconstructedWaisPlots_%d_*.root", run);
     eventSummaryChain->Add(fileName);
   }
 
@@ -95,11 +94,6 @@ int main(int argc, char *argv[])
     std::cerr << "Error! Unable to open output file " << outFileName.Data() << std::endl;
     return 1;
   }
-
-  // headChain->GetEntry(0);
-  // UInt_t firstRealTime = header->realTime;
-  // headChain->GetEntry(headChain->GetEntries()-1);
-  // UInt_t lastRealTime = header->realTime;  
 
   Long64_t nEntries = eventSummaryChain->GetEntries();
   Long64_t maxEntry = 0; //2500;

@@ -3,7 +3,7 @@
  Author: Ben Strutt
  Email: b.strutt.12@ucl.ac.uk
 
- Description:             
+ Description:
 ********************************************************************************************************* */
 
 #include "TFile.h"
@@ -37,29 +37,29 @@ int main(int argc, char *argv[])
     std::cerr << "Usage 1: " << argv[0] << " [cutStep]" << std::endl;
     return 1;
   }
-  
+
   const Int_t firstRun = 331; //atoi(argv[1]);
   const Int_t lastRun = 354;
   std::cout << firstRun << "\t" << lastRun << std::endl;
-  const int cutStep = atoi(argv[1]);  
+  const int cutStep = atoi(argv[1]);
   std::cout << "cutStep = " << cutStep << std::endl;
-  
+
 
 
 
   // for image peak / hilbert peak histograms
-  const double deltaSolarPhiDegClose = 20; 
+  const double deltaSolarPhiDegClose = 20;
   const double deltaSolarThetaClose = 5;
 
-  
+
   const bool useTimeCut = false;
   const int numGoodTimes = 1;
   UInt_t goodTimesStart[numGoodTimes] = {1419100000};
   UInt_t goodTimesEnd[numGoodTimes] = {1419500000};
-  
+
   const double findHilbert = 0; //120; //50;
   const double findImage = 0; //0.074; //0.1; //0.06;
-  
+
   // const double cutHilbert = 100; //50;
   // const double cutImage = 0.1; //0.06;
   const double cutHilbert = 0; //100; //50;
@@ -68,11 +68,11 @@ int main(int argc, char *argv[])
 
 
 
-  
+
   TChain* headChain = new TChain("headTree");
   TChain* gpsChain = new TChain("adu5PatTree");
   TChain* eventSummaryChain = new TChain("eventSummaryTree");
-  TChain* dataQualityChain = new TChain("dataQualityTree");    
+  TChain* dataQualityChain = new TChain("dataQualityTree");
 
   for(Int_t run=firstRun; run<=lastRun; run++){
     if(run>=257 && run<=263){
@@ -89,7 +89,7 @@ int main(int argc, char *argv[])
     eventSummaryChain->Add(fileName);
 
     fileName = TString::Format("filter260-370-400-762/makeWaisDataQualityTreesPlots_%d_*.root", run);
-    dataQualityChain->Add(fileName);    
+    dataQualityChain->Add(fileName);
 
   }
 
@@ -110,7 +110,7 @@ int main(int argc, char *argv[])
     return 1;
   }
 
-  
+
   RawAnitaHeader* header = NULL;
   headChain->SetBranchAddress("header", &header);
   Adu5Pat* pat = NULL;
@@ -120,7 +120,7 @@ int main(int argc, char *argv[])
   UInt_t eventNumberDQ;
   dataQualityChain->SetBranchAddress("eventNumber", &eventNumberDQ);
   AnitaEventSummary* eventSummary = NULL;
-  eventSummaryChain->SetBranchAddress("eventSummary", &eventSummary);  
+  eventSummaryChain->SetBranchAddress("eventSummary", &eventSummary);
 
   OutputConvention oc(argc, argv);
   TString outFileName = oc.getOutputFileName();
@@ -156,12 +156,12 @@ int main(int argc, char *argv[])
 
   const Int_t numImagePeakBins = 1024;
   const Int_t numHilbertPeakBins = 1024;
-  const Double_t maxHilbertPeak = 2048;  
+  const Double_t maxHilbertPeak = 2048;
 
-  
+
   // const int numPeaks = 1;
-  const int numPeaks = 1;  
-  
+  const int numPeaks = 1;
+
   TH2D* hPeakHeading = new TH2D("hPeakHeading",
 				"Peak Heading; Time; Peak Heading (Degrees)",
 				numTimeBins,
@@ -176,9 +176,9 @@ int main(int argc, char *argv[])
   for(int peakInd=0; peakInd < numPeaks; peakInd++){
     hGoodPeak->GetXaxis()->SetBinLabel(peakInd+2, TString::Format("%d", peakInd+1));
   }
-	
+
   TH2D* hPeakElevation = new TH2D("hPeakElevation",
-				  "Peak Elevation; Time; Peak Elevation (Degrees)",			      
+				  "Peak Elevation; Time; Peak Elevation (Degrees)",
 				  numTimeBins, firstRealTime, lastRealTime+1,
 				  numBinsTheta, minTheta, maxTheta);
 
@@ -199,20 +199,20 @@ int main(int argc, char *argv[])
   TH1D* hThetaDeg = new TH1D("hThetaDeg",
 			     "Peak Elevation; #theta_{peak} (Degrees); Events per bin",
 			     numBinsPhi, -90, 90);
-  
+
   TH1D* hDeltaPhiSect = new TH1D("hDeltaPhiSect",
 				 "Number of #Phi-sectors between image peak and nearest L3 trigger; #delta#Phi-sector; Events per bin",
-				 NUM_PHI/2+1, 0, NUM_PHI/2 + 1); // last bin == no L3 triggers  
-  
+				 NUM_PHI/2+1, 0, NUM_PHI/2 + 1); // last bin == no L3 triggers
+
   TH1D* hMaxBottomToTopPeakToPeakRatio = new TH1D("hBottomToTopPeakToPeakRatio",
 						  "Maximum peak-to-peak ratio between top and bottom rings; Ratio of peak-to-peak value (no units); Number of events",
 						  1024, 0, 10);
-  
+
   TH2D* hImagePeak1Peak2 = new TH2D("hImagePeak1Peak2",
 				    "Image peak 1 vs. Image Peak 2 ",
 				    numImagePeakBins, 0, 1,
 				    numImagePeakBins, 0, 1);
-  
+
   TH2D* hImagePeakHilbertPeak = new TH2D("hImagePeakHilbertPeak",
 					 "Image peak vs. Hilbert Peak ",
 					 numImagePeakBins, 0, 1,
@@ -227,8 +227,8 @@ int main(int argc, char *argv[])
 						    "Image peak vs. Hilbert Peak ",
 						    numImagePeakBins, 0, 1,
 						    numHilbertPeakBins, 0, maxHilbertPeak);
-  
-  
+
+
   TH2D* hImagePeakPhi = new TH2D("hImagePeakPhi",
 				 "Image peak vs. #Phi ",
 				 numBinsPhi, 0, 360,
@@ -243,7 +243,7 @@ int main(int argc, char *argv[])
 				    "Hilbert peak vs. Time ",
 				    numTimeBins, firstRealTime, lastRealTime+1,
 				    numHilbertPeakBins, 0, maxHilbertPeak);
-  
+
   TH2D* hHeading = new TH2D("hHeading",
 			    "ANITA heading vs. realTime; realTime; heading (Degrees)",
 			    1024, firstRealTime, lastRealTime+1,
@@ -257,7 +257,7 @@ int main(int argc, char *argv[])
     hDeltaSolarPhiDeg[peakInd] = new TH1D(name,
 					  "#delta#phi_{sun}; #delta#phi_{sun} (Degrees); Events per bin",
 					  numBinsPhi, -180, 180);
-    
+
     name = TString::Format("hDeltaSolarThetaDeg%d", peakInd);
     hDeltaSolarThetaDeg[peakInd] = new TH1D(name,
 					    "#deltaElevation_{sun}; #deltaElevation_{sun} (Degrees); Events per bin",
@@ -266,7 +266,7 @@ int main(int argc, char *argv[])
 
   }
 
-  
+
 
   TH2D* hDeltaSolarThetaDegVsTheta = new TH2D("hDeltaSolarThetaDegVsTheta",
 					      "#delta#theta_{sun} vs. Elevation_{sun}; Elevation (Degrees); #delta#theta (Degrees)",
@@ -314,11 +314,18 @@ int main(int argc, char *argv[])
 									      numBinsPhi, -180, 180,
 									      2*numBinsTheta, -180, 180);
 
-
   TProfile2D* pImagePeakVsDeltaSolarPhiDegVsSunTheta = new TProfile2D("pImagePeakVsDeltaSolarPhiDegVsSunTheta",
 								      "Profile of Image Peak vs. #delta#theta_{sun} vs. #theta_{sun}; #theta_{sun} (Degrees); #delta#theta_{sun} (Degrees); Image peak (no units)",
 								      numBinsPhi, 10, 40,
 								      2*numBinsTheta, -180, 180);
+
+  TH2D* hPeakSizes = new TH2D("hPeakSizes", "Map peaks; P1; P2", 1024, 0, 1, 1024, 0, 1);
+  TH2D* hPeakRatio = new TH2D("hPeakRatio", "Map peaks; P1; P2/P1/", 1024, 0, 1, 1024, 0, 2);
+  TH2D* hDeltaPeakVsPeak = new TH2D("hDeltaPeakVsPeak", "Map peaks; P1; P2", 1024, -1, 1, 1024, 0, 1);
+  TH2D* hDeltaPeakVsPeak2 = new TH2D("hDeltaPeakVsPeak2", "Map peaks; P1; (P1-P2)/P1 ", 1024, -1, 1, 1024, 0, 1);
+  TH1D* hDeltaPeak = new TH1D("hDeltaPeak", "Map peaks; P1-P2", 1024, -1, 1);
+  TH1D* hDeltaPeak2 = new TH1D("hDeltaPeak2", "Map peaks; p1/(P1-P2)", 1024, -1, 1);
+
 
   std::cerr << "building index" << std::endl;
   headChain->BuildIndex("eventNumber");
@@ -334,7 +341,7 @@ int main(int argc, char *argv[])
     else{
       headChain->GetEntry(headEntry);
 
-      
+
       AnitaPol::AnitaPol_t pol = AnitaPol::kVertical;
       if(eventSummary->peak[AnitaPol::kHorizontal][0].value > eventSummary->peak[AnitaPol::kVertical][0].value){
 	pol = AnitaPol::kHorizontal;
@@ -369,33 +376,33 @@ int main(int argc, char *argv[])
 
       if(eventSummary->eventNumber != eventNumberDQ){
 	std::cerr << "???" << eventSummary->eventNumber << "\t" << eventNumberDQ << std::endl;
-      }      
-    
+      }
 
-      
+
+
       Double_t maxRatio;
       AnalysisCuts::Status_t selfTriggeredBlastCut;
       selfTriggeredBlastCut = AnalysisCuts::applyBottomToTopRingPeakToPeakRatioCut(pol, peakToPeak[pol], maxRatio);
       if(cutStep >= 1 && selfTriggeredBlastCut==AnalysisCuts::kFail){
-	p.inc(entry, maxEntry);	
+	p.inc(entry, maxEntry);
 	continue;
       }
-      hMaxBottomToTopPeakToPeakRatio->Fill(maxRatio);        
+      hMaxBottomToTopPeakToPeakRatio->Fill(maxRatio);
 
-      
-      
+
+
       // Get event info
       const int peakInd = 0;
-      
+
       Double_t recoPhiDeg = eventSummary->peak[pol][peakInd].phi;
-      recoPhiDeg += recoPhiDeg < 0 ? DEGREES_IN_CIRCLE : 0;      
+      recoPhiDeg += recoPhiDeg < 0 ? DEGREES_IN_CIRCLE : 0;
       Double_t recoThetaDeg = eventSummary->peak[pol][peakInd].theta;
-      Double_t imagePeak = eventSummary->peak[pol][peakInd].value;      
+      Double_t imagePeak = eventSummary->peak[pol][peakInd].value;
       Double_t hilbertPeak = eventSummary->coherent[pol][peakInd].peakHilbert;
 
-      
 
-      
+
+
       // CUT FLOW
       // Step 2: cut phi-sector angle triggers
       Int_t deltaPhiSect = NUM_PHI/2;
@@ -403,20 +410,20 @@ int main(int argc, char *argv[])
       AnalysisCuts::Status_t l3TriggerCut;
       l3TriggerCut = AnalysisCuts::L3TriggerDirectionCut(pol, header, recoPhiDeg, deltaPhiSect);
       if(cutStep >= 2 && l3TriggerCut==AnalysisCuts::kFail){
-	p.inc(entry, maxEntry);	
+	p.inc(entry, maxEntry);
 	continue;
       }
-      
+
       hDeltaPhiSect->Fill(deltaPhiSect);
 
 
       gpsChain->GetEntry(headEntry);
-      
+
 
 
 
       // CUT FLOW
-      // Step 3: cut phi-direction relative to sun      
+      // Step 3: cut phi-direction relative to sun
       Double_t solarPhiDeg = eventSummary->sun.phi;
       Double_t solarThetaDeg = -1*eventSummary->sun.theta;
 
@@ -434,17 +441,17 @@ int main(int argc, char *argv[])
 
       if(TMath::Abs(deltaSolarPhiDeg) < deltaSolarPhiDegClose &&
 	 TMath::Abs(deltaSolarThetaDeg) < deltaSolarThetaClose){
-	hImagePeakHilbertPeakSunPhiTheta->Fill(imagePeak, hilbertPeak);	
+	hImagePeakHilbertPeakSunPhiTheta->Fill(imagePeak, hilbertPeak);
       }
       else if(TMath::Abs(deltaSolarPhiDeg) < deltaSolarPhiDegClose){
-	hImagePeakHilbertPeakSunPhi->Fill(imagePeak, hilbertPeak);	  
-      }      
+	hImagePeakHilbertPeakSunPhi->Fill(imagePeak, hilbertPeak);
+      }
 
-      
+
       AnalysisCuts::Status_t sunCut;
       sunCut = AnalysisCuts::applySunPointingCut(deltaSolarPhiDeg);
       if(cutStep>=3 && sunCut==AnalysisCuts::kFail){
-	p.inc(entry, maxEntry);	
+	p.inc(entry, maxEntry);
 	continue;
       }
 
@@ -469,34 +476,34 @@ int main(int argc, char *argv[])
       Double_t fisher;
       thermalCut = AnalysisCuts::applyThermalBackgroundCut(imagePeak, hilbertPeak, fisher);
       if(cutStep>=4 && thermalCut==AnalysisCuts::kFail){
-	p.inc(entry, maxEntry);	
+	p.inc(entry, maxEntry);
 	continue;
       }
 
       // if(imagePeak < 0.05 && hilbertPeak < 50){
       // std::cerr << "?????????????" << header->eventNumber << "\t" << header->run << "\t" << imagePeak << "\t" << hilbertPeak << "\t" << fisher << std::endl;
       // }
-      
 
 
 
-      
 
-      
+
+
+
       if(imagePeak < cutImage || hilbertPeak < cutHilbert){
-	p.inc(entry, maxEntry);	
+	p.inc(entry, maxEntry);
 	continue;
       }
 
       if((findImage > 0 && imagePeak >= findImage) || (findHilbert > 0 && hilbertPeak >= findHilbert)){
       	std::cerr << header->run << "\t" << header->eventNumber << "\t" << imagePeak << "\t" << hilbertPeak << std::endl;;
       }
-      
+
 
       if(recoPhiDeg < 0) recoPhiDeg += 360;
       else if(recoPhiDeg >= 360) recoPhiDeg -= 360;
 
-	
+
       if(recoPhiDeg < 0){
 	std::cerr << recoPhiDeg <<"\t" << std::endl;
       }
@@ -513,7 +520,7 @@ int main(int argc, char *argv[])
 	std::cerr << recoPhiDeg << "\t" << pat->heading << std::endl;
       }
 
-      hImagePeak1Peak2->Fill(imagePeak, eventSummary->peak[pol][peakInd+1].value);      
+      hImagePeak1Peak2->Fill(imagePeak, eventSummary->peak[pol][peakInd+1].value);
 
       hThetaDeg->Fill(recoThetaDeg);
 
@@ -540,7 +547,18 @@ int main(int argc, char *argv[])
 			   imagePeak);
       hHilbertPeakTime->Fill(header->realTime,
 			     hilbertPeak);
-	
+
+      // std::cout << clusteredEvent->eventNumber  << "\t" << eventSummary->eventNumber << "\t";
+      Double_t p1 = eventSummary->peak[pol][0].value;
+      Double_t p2 = eventSummary->peak[pol][1].value;
+
+      hPeakSizes->Fill(p1, p2);
+      hDeltaPeakVsPeak->Fill(p1, p1 - p2);
+      hDeltaPeakVsPeak2->Fill(p1, (p1-p2)/p1);
+      hDeltaPeak->Fill(p1-p2);
+      hDeltaPeak2->Fill((p1-p2)/p1);
+      hPeakRatio->Fill(p1, p2/p1);
+
 
       // reconstruction data quality
       hImagePeakPhi->Fill(recoPhiDeg, imagePeak);
@@ -548,7 +566,7 @@ int main(int argc, char *argv[])
     }
 
     p.inc(entry, maxEntry);
-  
+
   }
 
   outFile->Write();
@@ -556,4 +574,3 @@ int main(int argc, char *argv[])
 
   return 0;
 }
-  

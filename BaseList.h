@@ -1,20 +1,23 @@
-#ifndef COMNAP_H
-#define COMNAP_H
+#ifndef BASELIST_H
+#define BASELIST_H
 
 #include "TString.h"
 #include <vector>
 
-namespace COMNAP2014{
+namespace BaseList{
 
   class base{
   public:
-    base(const TString& theName, double lat, double lon, double alt=0){
+    base(const TString& theName, const TString& source, double lat, double lon, double alt=0){
       name = theName;
+      dataSource = source;
       latitude = lat;
       longitude = lon;
       altitude = alt;
     }
+
     TString name;
+    TString dataSource;
     double latitude;
     double longitude;
     double altitude;
@@ -26,4 +29,4 @@ namespace COMNAP2014{
 };
 
 
-#endif // COMNAP_H
+#endif // BASELIST_H

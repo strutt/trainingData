@@ -47,7 +47,7 @@ int main(int argc, char *argv[]){
   TChain* headChain = new TChain("headTree");
   // TChain* gpsChain = new TChain("adu5PatTree");
   TChain* calEventChain = new TChain("eventTree");
-  
+
   for(Int_t run=firstRun; run<=lastRun; run++){
     TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/headFile%d.root", run, run);
     // TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/decimatedHeadFile%d.root", run, run);
@@ -70,7 +70,7 @@ int main(int argc, char *argv[]){
     std::cerr << "Unable to find calEvent files!" << std::endl;
     return 1;
   }
-  
+
   calEventChain->BuildIndex("eventNumber");
   // gpsChain->BuildIndex("eventNumber");
 
@@ -89,13 +89,13 @@ int main(int argc, char *argv[]){
     return 1;
   }
 
-    
+
   TTree* dataQualityTree = new TTree("dataQualityTree", "dataQualityTree");
   // AnitaEventSummary* dataQuality = new AnitaEventSummary();
 
   UInt_t eventNumber = 0;
   dataQualityTree->Branch("eventNumber", &eventNumber);
-  
+
   Double_t peakToPeak[NUM_POL][NUM_SEAVEYS];
   dataQualityTree->Branch("peakToPeak",
 			  peakToPeak,
@@ -107,11 +107,11 @@ int main(int argc, char *argv[]){
 			  TString::Format("numPoints[%d][%d]/S",
 					  NUM_POL, NUM_SEAVEYS));
 
-  Double_t power[NUM_POL][NUM_SEAVEYS];
-  dataQualityTree->Branch("power",
-			  power,
-			  TString::Format("power[%d][%d]/D",
-					  NUM_POL, NUM_SEAVEYS));
+  // Double_t power[NUM_POL][NUM_SEAVEYS];
+  // dataQualityTree->Branch("power",
+  // 			  power,
+  // 			  TString::Format("power[%d][%d]/D",
+  // 					  NUM_POL, NUM_SEAVEYS));
 
   Double_t maxVolts[NUM_POL][NUM_SEAVEYS];
   dataQualityTree->Branch("maxVolts",
@@ -124,8 +124,8 @@ int main(int argc, char *argv[]){
 			  minVolts,
 			  TString::Format("minVolts[%d][%d]/D",
 					  NUM_POL, NUM_SEAVEYS));
-  
-  
+
+
   Long64_t nEntries = headChain->GetEntries();
   Long64_t maxEntry = 0; //2500;
   Long64_t startEntry = 0;
@@ -138,7 +138,7 @@ int main(int argc, char *argv[]){
     headChain->GetEntry(entry);
 
     Int_t isMinBias = RootTools::isMinBiasSampleEvent(header);
-    if(isMinBias > 0){ 
+    if(isMinBias > 0){
       calEventChain->GetEntryWithIndex(header->eventNumber);
 
       UsefulAnitaEvent* usefulEvent = new UsefulAnitaEvent(calEvent);
@@ -151,7 +151,7 @@ int main(int argc, char *argv[]){
 
 	  TGraph* gr = usefulEvent->getGraph(ant, (AnitaPol::AnitaPol_t) pol);
 
-	  
+
 	  numPoints[pol][ant] = gr->GetN();
 
 	  Double_t maxY;
@@ -163,10 +163,10 @@ int main(int argc, char *argv[]){
 	  peakToPeak[pol][ant] = maxY - minY;
 	  maxVolts[pol][ant] = -9999;
 	  minVolts[pol][ant] = 9999;
-	  power[pol][ant] = 0;
+	  // power[pol][ant] = 0;
 	  for(int samp=0; samp < numPoints[pol][ant]; samp++){
 	    Double_t v = gr->GetY()[samp];
-	    power[pol][ant] += v*v*gr->GetX()[samp];
+	    // power[pol][ant] += v*v*gr->GetX()[samp];
 	    if(v > maxVolts[pol][ant]){
 	      maxVolts[pol][ant] = v;
 	    }
@@ -174,7 +174,7 @@ int main(int argc, char *argv[]){
 	      minVolts[pol][ant] = v;
 	    }
 	  }
-	  
+
 	  delete gr;
 	}
       }
@@ -186,7 +186,7 @@ int main(int argc, char *argv[]){
   }
 
   outFile->Write();
-  outFile->Close();  
-  
+  outFile->Close();
+
   return 0;
 }

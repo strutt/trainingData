@@ -3,7 +3,7 @@
  Author: Ben Strutt
  Email: b.strutt.12@ucl.ac.uk
 
- Description:             
+ Description:
 ********************************************************************************************************* */
 
 #include "TFile.h"
@@ -42,22 +42,27 @@ int main(int argc, char *argv[])
     return 1;
   }
 
-  
+
   std::cout << argv[0] << "\t" << argv[1];
   if(argc==3){std::cout << "\t" << argv[2];}
   std::cout << std::endl;
   const Int_t firstRun = atoi(argv[1]);
   const Int_t lastRun = argc==3 ? atoi(argv[2]) : firstRun;
 
-  
+
   const int numGoodTimes = 1;
-  UInt_t goodTimesStart[numGoodTimes] = {1419100000};
+  UInt_t goodTimesStart[numGoodTimes] = {1419220000};
   UInt_t goodTimesEnd[numGoodTimes] = {1419500000};
 
-  
+  // UInt_t goodTimesStart[numGoodTimes] = {1419220000};
+  // UInt_t goodTimesEnd[numGoodTimes] = {1419690000};
+  // UInt_t goodTimesStart[numGoodTimes] = {1419100000};
+  // UInt_t goodTimesEnd[numGoodTimes] = {1419500000};
+
+
   TChain* headChain = new TChain("headTree");
-  TChain* eventSummaryChain = new TChain("eventSummaryTree");  
-  TChain* dataQualityChain = new TChain("dataQualityTree");    
+  TChain* eventSummaryChain = new TChain("eventSummaryTree");
+  TChain* dataQualityChain = new TChain("dataQualityTree");
 
   for(Int_t run=firstRun; run<=lastRun; run++){
     if(run>=257 && run<=263){
@@ -70,13 +75,13 @@ int main(int argc, char *argv[])
 
 
     fileName = TString::Format("filter260-370-400-762-5peaks/reconstructMinBiasPlots_%d_*.root", run);
-    // fileName = TString::Format("filter260-370-400-762-5peaks/reconstructDecimatedPlots_%d_*.root", run);    
-    // TString fileName = TString::Format("test400MHzExt/reconstructDecimatedPlots_%d_*.root", run); 
+    // fileName = TString::Format("filter260-370-400-762-5peaks/reconstructDecimatedPlots_%d_*.root", run);
+    // TString fileName = TString::Format("test400MHzExt/reconstructDecimatedPlots_%d_*.root", run);
     eventSummaryChain->Add(fileName);
 
-    
+
     fileName = TString::Format("filter260-370-400-762/makeMinBiasDataQualityTreesPlots_%d*.root", run);
-    // fileName = TString::Format("testNewDataQuality/makeDecimatedDataQualityTreesPlots_%d*.root", run);    
+    // fileName = TString::Format("testNewDataQuality/makeDecimatedDataQualityTreesPlots_%d*.root", run);
     dataQualityChain->Add(fileName);
   }
 
@@ -100,7 +105,7 @@ int main(int argc, char *argv[])
   UInt_t eventNumberDQ;
   dataQualityChain->SetBranchAddress("eventNumber", &eventNumberDQ);
   AnitaEventSummary* eventSummary = NULL;
-  eventSummaryChain->SetBranchAddress("eventSummary", &eventSummary);  
+  eventSummaryChain->SetBranchAddress("eventSummary", &eventSummary);
 
   OutputConvention oc(argc, argv);
   TString outFileName = oc.getOutputFileName();
@@ -112,7 +117,7 @@ int main(int argc, char *argv[])
 
   TTree* outTree = new TTree("thermalTree", "HQ Thermal Background Events");
   UInt_t eventNumber;
-  outTree->Branch("eventNumber", &eventNumber);  
+  outTree->Branch("eventNumber", &eventNumber);
   Double_t imagePeak;
   outTree->Branch("imagePeak", &imagePeak);
   Double_t hilbertPeak;
@@ -153,35 +158,35 @@ int main(int argc, char *argv[])
 	pol = AnitaPol::kHorizontal;
       }
 
-      
+
       dataQualityChain->GetEntry(entry);
 
 
       if(eventSummary->eventNumber != eventNumberDQ){
 	std::cerr << "???" << eventSummary->eventNumber << "\t" << eventNumberDQ << std::endl;
-      }      
-    
+      }
 
-      
+
+
       Double_t maxRatio;
       AnalysisCuts::Status_t selfTriggeredBlastCut;
       selfTriggeredBlastCut = AnalysisCuts::applyBottomToTopRingPeakToPeakRatioCut(pol, peakToPeak[pol], maxRatio);
       if(selfTriggeredBlastCut==AnalysisCuts::kFail){
-	p.inc(entry, maxEntry);	
+	p.inc(entry, maxEntry);
 	continue;
       }
 
       // Get event info
       const int peakInd = 0;
-      
+
       Double_t recoPhiDeg = eventSummary->peak[pol][peakInd].phi;
-      recoPhiDeg += recoPhiDeg < 0 ? DEGREES_IN_CIRCLE : 0;      
-      imagePeak = eventSummary->peak[pol][peakInd].value;      
+      recoPhiDeg += recoPhiDeg < 0 ? DEGREES_IN_CIRCLE : 0;
+      imagePeak = eventSummary->peak[pol][peakInd].value;
       hilbertPeak = eventSummary->coherent[pol][peakInd].peakHilbert;
 
-      
 
-      
+
+
       // CUT FLOW
       // Step 2: cut phi-sector angle triggers
       Int_t deltaPhiSect = NUM_PHI/2;
@@ -189,34 +194,40 @@ int main(int argc, char *argv[])
       AnalysisCuts::Status_t l3TriggerCut;
       l3TriggerCut = AnalysisCuts::L3TriggerDirectionCut(pol, header, recoPhiDeg, deltaPhiSect);
       if(l3TriggerCut==AnalysisCuts::kFail){
-	p.inc(entry, maxEntry);	
+	p.inc(entry, maxEntry);
 	continue;
       }
 
 
 
       // CUT FLOW
-      // Step 3: cut phi-direction relative to sun      
+      // Step 3: cut phi-direction relative to sun
       Double_t solarPhiDeg = eventSummary->sun.phi;
       Double_t deltaSolarPhiDeg = RootTools::getDeltaAngleDeg(recoPhiDeg, solarPhiDeg);
       AnalysisCuts::Status_t sunCut;
       sunCut = AnalysisCuts::applySunPointingCut(deltaSolarPhiDeg);
       if(sunCut==AnalysisCuts::kFail){
-	p.inc(entry, maxEntry);	
+	p.inc(entry, maxEntry);
 	continue;
       }
-    
+
+      if(imagePeak > 0.075){
+	std::cerr << "\nIP: run " << header->run << "\teventNumber: " << header->eventNumber << std::endl;
+      }
+      else if(hilbertPeak > 75){
+	std::cerr << "\nHP: run " << header->run << "\teventNumber: " << header->eventNumber << std::endl;
+      }
+
       imagePeak = eventSummary->peak[pol][peakInd].value;
-      hilbertPeak = eventSummary->coherent[pol][peakInd].peakHilbert;      
+      hilbertPeak = eventSummary->coherent[pol][peakInd].peakHilbert;
 
       outTree->Fill();
     }
     p.inc(entry, maxEntry);
   }
-  
+
   outFile->Write();
   outFile->Close();
 
   return 0;
 }
-
