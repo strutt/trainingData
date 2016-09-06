@@ -44,7 +44,6 @@ int main(int argc, char *argv[])
   const Int_t firstRun = atoi(argv[1]);
   const Int_t lastRun = firstRun;
 
-
   std::cout << firstRun << "\t" << lastRun << std::endl;
 
   TChain* eventSummaryChain = new TChain("eventSummaryTree");

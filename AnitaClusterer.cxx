@@ -1050,6 +1050,7 @@ TTree* AnitaClusterer::makeClusterSummaryTree(TFile* fOut){
   clusterTree->Branch("clusteredEvent", &clusteredEvent);
 
   // AnitaGeomTool* geom = AnitaGeomTool::Instance();
+  const int numBases = BaseList::getNumBases();
 
   for(Int_t pointInd=0; pointInd < (Int_t)points.size(); pointInd++){
 
@@ -1058,6 +1059,7 @@ TTree* AnitaClusterer::makeClusterSummaryTree(TFile* fOut){
     clusteredEvent = new ClusteredAnitaEvent();
     clusteredEvent->eventNumber = eventNumbers.at(pointInd);
     clusteredEvent->run = runs.at(pointInd);
+    clusteredEvent->pol = points.at(pointInd).pol;
 
     // convert from km back to m for conversion to lat/lon/alt
     // for(int dim=0; dim < nDim; dim++){
@@ -1072,9 +1074,12 @@ TTree* AnitaClusterer::makeClusterSummaryTree(TFile* fOut){
 
     Int_t clusterInd = points.at(pointInd).inCluster;
     clusteredEvent->inCluster = clusterInd;
+    clusteredEvent->isBase = 0;
 
     if(clusterInd >= 0){
       const Cluster& cluster = clusters.at(clusterInd);
+
+      clusteredEvent->isBase = clusterInd < numBases ? 1 : 0;
 
       clusteredEvent->clusterLat = cluster.latitude;
       clusteredEvent->clusterLon = cluster.longitude;

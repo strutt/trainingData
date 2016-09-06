@@ -162,7 +162,8 @@ int main(int argc, char *argv[]){
 	Double_t sourceAlt = eventSummary->peak[polInd][peakInd].altitude;
 	if(sourceLat > -999 && sourceLon > -999){
 	  // std::cout << (eventSummary->peak[polInd][peakInd].distanceToSource < 1e6 )<< std::endl;
-	  if(eventSummary->peak[polInd][peakInd].theta < 0 && eventSummary->peak[polInd][peakInd].distanceToSource < 1e6){
+	  // if(eventSummary->peak[polInd][peakInd].theta < 0 && eventSummary->peak[polInd][peakInd].distanceToSource < 1e6){
+	  if(eventSummary->peak[polInd][peakInd].distanceToSource < 1e6){
 
 	    Double_t snr = eventSummary->peak[polInd][peakInd].snr;
 	    // Double_t sigmaTheta = hResTheta[polInd]->GetBinContent(hResPhi[polInd]->FindBin(snr));
@@ -185,6 +186,7 @@ int main(int argc, char *argv[]){
   // clusterer.kMeansCluster(1);
   clusterer.llCut = 1500;
   clusterer.initializeBaseList();
+  clusterer.recursivelyAddClusters(0);
   // clusterer.recursivelyAddClusters(5);
 
   outFile->cd();
@@ -209,8 +211,8 @@ int main(int argc, char *argv[]){
 
   ClusteredAnitaEvent* clusteredEvent = 0;
   clusterTreeBases->SetBranchAddress("clusteredEvent", &clusteredEvent);
-
   eventSummaryChain->BuildIndex("eventNumber");
+
 
 
   TH2D* hPeakSizes = new TH2D("hPeakSizes", "Map peaks; P1; P2", 1024, 0, 1, 1024, 0, 1);
@@ -238,7 +240,6 @@ int main(int argc, char *argv[]){
 	hDeltaPeak2->Fill((p1-p2)/p1);
 	// std::cout << eventSummary->peak[1][0].value  << std::endl;
       }
-
     }
   }
 

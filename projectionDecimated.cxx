@@ -3,7 +3,7 @@
  Author: Ben Strutt
  Email: b.strutt.12@ucl.ac.uk
 
- Description:             
+ Description:
 ********************************************************************************************************* */
 
 #include "TFile.h"
@@ -45,13 +45,13 @@ int main(int argc, char *argv[])
   // const Int_t lastRun = argc==3 ? atoi(argv[2]) : firstRun;
   const Int_t lastRun = firstRun;
 
-  const int cutStep = 4;  
+  const int cutStep = 6;
 
   TChain* headChain = new TChain("headTree");
   TChain* indexedHeadChain = new TChain("headTree");
   TChain* gpsChain = new TChain("adu5PatTree");
   TChain* eventSummaryChain = new TChain("eventSummaryTree");
-  TChain* dataQualityChain = new TChain("dataQualityTree");  
+  TChain* dataQualityChain = new TChain("dataQualityTree");
 
   for(Int_t run=firstRun; run<=lastRun; run++){
     if(run>=257 && run<=263){
@@ -67,15 +67,16 @@ int main(int argc, char *argv[])
 
     fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/indexedBlindHeadFile%d.root", run, run);
     indexedHeadChain->Add(fileName);
-    
+
     fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/gpsEvent%d.root", run, run);
     gpsChain->Add(fileName);
-    
+
     // fileName = TString::Format("~/UCL/ANITA/anita3Analysis/trainingData/filter260-370-400-762-speed/reconstructWaisPlots_%d_*.root", run);
-    fileName = TString::Format("~/UCL/ANITA/anita3Analysis/trainingData/filter260-370-400-762-speed/reconstructDecimatedPlots_%d_*.root", run);    
+    fileName = TString::Format("~/UCL/ANITA/anita3Analysis/trainingData/filter260-370-400-762-5peaks/reconstructDecimatedPlots_%d_*.root", run);
     eventSummaryChain->Add(fileName);
 
-    fileName = TString::Format("~/UCL/ANITA/anita3Analysis/trainingData/filter260-370-400-762/makeDecimatedDataQualityTreesPlots_%d_*.root", run);
+    // fileName = TString::Format("~/UCL/ANITA/anita3Analysis/trainingData/filter260-370-400-762/makeDecimatedDataQualityTreesPlots_%d_*.root", run);
+    fileName = TString::Format("finalDataQuality/slimTreePlots_%d_*.root", run);
     dataQualityChain->Add(fileName);
   }
 
@@ -96,7 +97,7 @@ int main(int argc, char *argv[])
     return 1;
   }
 
-  indexedHeadChain->BuildIndex("eventNumber");    
+  indexedHeadChain->BuildIndex("eventNumber");
   // headChain->BuildIndex("eventNumber");
   // gpsChain->BuildIndex("eventNumber");
 
@@ -104,12 +105,16 @@ int main(int argc, char *argv[])
   headChain->SetBranchAddress("header", &header);
   Adu5Pat* pat = NULL;
   gpsChain->SetBranchAddress("pat", &pat);
-  Double_t peakToPeak[NUM_POL][NUM_SEAVEYS];
-  dataQualityChain->SetBranchAddress("peakToPeak", peakToPeak);
+  Double_t maxPeakToPeakRatio[NUM_POL];
+  dataQualityChain->SetBranchAddress("maxPeakToPeakRatio", maxPeakToPeakRatio);
+  Double_t theMaxVolts[NUM_POL];
+  dataQualityChain->SetBranchAddress("theMaxVolts", theMaxVolts);
+  Double_t theMinVolts[NUM_POL];
+  dataQualityChain->SetBranchAddress("theMinVolts",theMinVolts);
   UInt_t eventNumberDQ;
   dataQualityChain->SetBranchAddress("eventNumber", &eventNumberDQ);
   AnitaEventSummary* eventSummary = NULL;
-  eventSummaryChain->SetBranchAddress("eventSummary", &eventSummary);  
+  eventSummaryChain->SetBranchAddress("eventSummary", &eventSummary);
 
   OutputConvention oc(argc, argv);
   TString outFileName = oc.getOutputFileName();
@@ -123,10 +128,29 @@ int main(int argc, char *argv[])
   AnitaEventSummary* outEventSummary = NULL;
   outTree->Branch("eventSummary", &outEventSummary);
 
+  TTree* consequenceTree = new TTree("consequenceTree", "consequenceTree");
+  UInt_t eventNumberCT = 0;
+  consequenceTree->Branch("eventNumber", &eventNumberCT);
+  AnalysisCuts::Status_t surfSaturation;
+  consequenceTree->Branch("surfSaturation", &surfSaturation);
+  AnalysisCuts::Status_t selfTriggeredBlastCut;
+  consequenceTree->Branch("selfTriggeredBlastCut", &selfTriggeredBlastCut);
+  AnalysisCuts::Status_t l3TriggerCut;
+  consequenceTree->Branch("l3TriggerCut", &l3TriggerCut);
+  AnalysisCuts::Status_t sunCut;
+  consequenceTree->Branch("sunCut", &sunCut);
+  AnalysisCuts::Status_t thermalCut;
+  consequenceTree->Branch("thermalCut", &thermalCut);
+  AnalysisCuts::Status_t peakRatioCut;
+  consequenceTree->Branch("peakRatioCut", &peakRatioCut);
+  AnalysisCuts::Status_t thetaAngleCut;
+  consequenceTree->Branch("thetaAngleCut", &thetaAngleCut);
+
+
   TTree* outTree2 = new TTree("adu5PatTree", "adu5PatTree");
   Adu5Pat* pat2 = NULL;
   outTree2->Branch("pat", &pat2);
-  
+
   Long64_t nEntries = eventSummaryChain->GetEntries();
   Long64_t maxEntry = 0; //2500;
   Long64_t startEntry = 0;
@@ -141,81 +165,139 @@ int main(int argc, char *argv[])
     // headChain->GetEntryWithIndex(eventSummary->eventNumber);
     // gpsChain->GetEntryWithIndex(eventSummary->eventNumber);
 
-
-      
     AnitaPol::AnitaPol_t pol = AnitaPol::kVertical;
     if(eventSummary->peak[AnitaPol::kHorizontal][0].value > eventSummary->peak[AnitaPol::kVertical][0].value){
       pol = AnitaPol::kHorizontal;
     }
 
-    dataQualityChain->GetEntry(entry);    
+    surfSaturation = AnalysisCuts::kPass;
+    selfTriggeredBlastCut = AnalysisCuts::kPass;
+    l3TriggerCut = AnalysisCuts::kPass;
+    sunCut = AnalysisCuts::kPass;
+    thermalCut = AnalysisCuts::kPass;
+    peakRatioCut = AnalysisCuts::kPass;
+    thetaAngleCut = AnalysisCuts::kPass;
+
+    dataQualityChain->GetEntry(entry);
 
     if(eventSummary->eventNumber != eventNumberDQ){
-      std::cerr << "???" << eventSummary->eventNumber << "\t" << eventNumberDQ << std::endl;
+      std::cerr << "??? " << std::endl << header->run << "\t"
+		<< eventSummary->eventNumber << "\t"
+		<< eventNumberDQ << "\t"
+		<< header->eventNumber << std::endl;
     }
 
-      
-      
-    
-    Double_t maxRatio;
-    AnalysisCuts::Status_t selfTriggeredBlastCut;
-    selfTriggeredBlastCut = AnalysisCuts::applyBottomToTopRingPeakToPeakRatioCut(pol, peakToPeak[pol], maxRatio);
-    if(cutStep >= 1 && selfTriggeredBlastCut==AnalysisCuts::kFail){
-      p.inc(entry, maxEntry);	
-      continue;
-    }
-      
-      
-    // Get event info
-    const int peakInd = 0;
-      
-    Double_t recoPhiDeg = eventSummary->peak[pol][peakInd].phi;
-    recoPhiDeg += recoPhiDeg < 0 ? DEGREES_IN_CIRCLE : 0;      
-    Double_t recoThetaDeg = eventSummary->peak[pol][peakInd].theta;
-    Double_t imagePeak = eventSummary->peak[pol][peakInd].value;      
-    Double_t hilbertPeak = eventSummary->coherent[pol][peakInd].peakHilbert;
 
-      
+    Double_t maxV = TMath::Max(theMaxVolts[0],  theMaxVolts[1]);
+    Double_t minV = TMath::Max(theMinVolts[0],  theMinVolts[1]);
+    Double_t absSumMaxMin = maxV + minV;
+    surfSaturation = AnalysisCuts::applySurfSaturationCut(maxV, minV, absSumMaxMin);
 
-      
-    // CUT FLOW
-    // Step 2: cut phi-sector angle triggers
-    Int_t deltaPhiSect = NUM_PHI/2;
+    if(cutStep >= 1 && surfSaturation==AnalysisCuts::kFail){
+      if(header->eventNumber==19567584){
+	std::cerr << "I failed cut " << 1 << "a" << std::endl;
+      }
 
-    AnalysisCuts::Status_t l3TriggerCut;
-    l3TriggerCut = AnalysisCuts::L3TriggerDirectionCut(pol, header, recoPhiDeg, deltaPhiSect);
-    if(cutStep >= 2 && l3TriggerCut==AnalysisCuts::kFail){
       p.inc(entry, maxEntry);
       continue;
     }
 
-    gpsChain->GetEntry(entry2);
-    
+    selfTriggeredBlastCut = AnalysisCuts::applyBottomToTopRingPeakToPeakRatioCut(maxPeakToPeakRatio[pol]);
+    if(cutStep >= 1 && selfTriggeredBlastCut==AnalysisCuts::kFail){
+      if(header->eventNumber==19567584){
+	std::cerr << "I failed cut " << 1 << "b" << "\t" << maxPeakToPeakRatio[pol] << std::endl;
+      }
 
-    // CUT FLOW
-    // Step 3: cut phi-direction relative to sun      
-    Double_t solarPhiDeg = eventSummary->sun.phi;
-    // Double_t solarThetaDeg = -1*eventSummary->sun.theta;
-
-    Double_t deltaSolarPhiDeg = RootTools::getDeltaAngleDeg(recoPhiDeg, solarPhiDeg);
-    solarPhiDeg = solarPhiDeg < 0 ? solarPhiDeg + 360 : solarPhiDeg;
-    // Double_t deltaSolarThetaDeg = recoThetaDeg - solarThetaDeg;
-      
-    AnalysisCuts::Status_t sunCut;
-    sunCut = AnalysisCuts::applySunPointingCut(deltaSolarPhiDeg);
-    if(cutStep>=3 && sunCut==AnalysisCuts::kFail){
-      p.inc(entry, maxEntry);	
+      p.inc(entry, maxEntry);
       continue;
     }
 
-    AnalysisCuts::Status_t thermalCut;
+
+
+    // Get event info
+    const int peakInd = 0;
+
+    Double_t recoPhiDeg = eventSummary->peak[pol][peakInd].phi;
+    recoPhiDeg += recoPhiDeg < 0 ? DEGREES_IN_CIRCLE : 0;
+    Double_t recoThetaDeg = eventSummary->peak[pol][peakInd].theta;
+    Double_t imagePeak = eventSummary->peak[pol][peakInd].value;
+    Double_t hilbertPeak = eventSummary->coherent[pol][peakInd].peakHilbert;
+
+
+    // CUT FLOW
+    // Step 2: cut phi-sector angle triggers
+    Int_t deltaPhiSect = NUM_PHI/2;
+
+    l3TriggerCut = AnalysisCuts::L3TriggerDirectionCut(pol, header, recoPhiDeg, deltaPhiSect);
+    if(cutStep >= 2 && l3TriggerCut==AnalysisCuts::kFail){
+      p.inc(entry, maxEntry);
+      if(header->eventNumber==19567584){
+	std::cerr << "I failed cut " << 2 << std::endl;
+      }
+      consequenceTree->Fill();
+      continue;
+    }
+    gpsChain->GetEntry(entry2);
+
+    Double_t solarPhiDeg = eventSummary->sun.phi;
+    Double_t deltaSolarPhiDeg = RootTools::getDeltaAngleDeg(recoPhiDeg, solarPhiDeg);
+    solarPhiDeg = solarPhiDeg < 0 ? solarPhiDeg + 360 : solarPhiDeg;
+
+    sunCut = AnalysisCuts::applySunPointingCut(deltaSolarPhiDeg);
+    if(cutStep>=3 && sunCut==AnalysisCuts::kFail){
+      if(header->eventNumber==19567584){
+	std::cerr << "I failed cut " << 3 << std::endl;
+      }
+
+      p.inc(entry, maxEntry);
+      consequenceTree->Fill();
+      continue;
+    }
+
+
     Double_t fisher;
     thermalCut = AnalysisCuts::applyThermalBackgroundCut(imagePeak, hilbertPeak, fisher);
     if(cutStep>=4 && thermalCut==AnalysisCuts::kFail){
-      p.inc(entry, maxEntry);	
+      p.inc(entry, maxEntry);
+      if(header->eventNumber==19567584){
+	std::cerr << "I failed cut " << 4 << std::endl;
+      }
+      consequenceTree->Fill();
       continue;
     }
-    
+
+    if(imagePeak < 0.075 || (imagePeak < 0.3 && hilbertPeak > 200)){
+      std::cout << std::endl << header->run << "\t" << header->eventNumber << "\t" << imagePeak << "\t" << hilbertPeak << "\t" << fisher << std::endl;
+    }
+
+
+
+
+    Double_t p1 = eventSummary->peak[pol][0].value;
+    Double_t p2 = eventSummary->peak[pol][1].value;
+    Double_t peakRatio;
+    peakRatioCut = AnalysisCuts::applyImagePeakRatioCut(p1, p2, peakRatio);
+    if(cutStep>=5 && peakRatioCut==AnalysisCuts::kFail){
+      p.inc(entry, maxEntry);
+      if(header->eventNumber==19567584){
+	std::cerr << "I failed cut " << 5 << std::endl;
+      }
+      consequenceTree->Fill();
+      continue;
+    }
+
+
+    thetaAngleCut = AnalysisCuts::applyThetaAngleCut(recoThetaDeg);
+    if(cutStep>=6 && thetaAngleCut==AnalysisCuts::kFail){
+      if(header->eventNumber==19567584){
+	std::cerr << "I failed cut " << 6 << std::endl;
+      }
+
+      p.inc(entry, maxEntry);
+      consequenceTree->Fill();
+      continue;
+    }
+
     UsefulAdu5Pat usefulPat(pat);
 
     Int_t goodPeak = 0; // for now
@@ -247,21 +329,21 @@ int main(int argc, char *argv[])
     if(success){
       outEventSummary->peak[pol][goodPeak].latitude = sourceLat;
       outEventSummary->peak[pol][goodPeak].longitude = sourceLon;
-      outEventSummary->peak[pol][goodPeak].altitude = sourceAlt;      
+      outEventSummary->peak[pol][goodPeak].altitude = sourceAlt;
       outEventSummary->peak[pol][goodPeak].distanceToSource = SPEED_OF_LIGHT_NS*usefulPat.getTriggerTimeNsFromSource(sourceLat, sourceLon, sourceAlt);
     }
 
     outTree->Fill();
-    
+
     pat2 = pat;
-    
+
     outTree2->Fill();
 
     // delete pat2;
-    
+
     p.inc(entry, maxEntry);
   }
-  
+
   outFile->Write();
   outFile->Close();
 

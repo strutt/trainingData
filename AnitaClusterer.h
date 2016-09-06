@@ -46,6 +46,7 @@ class ClusteredAnitaEvent{
 public:
   UInt_t eventNumber;
   Int_t run;
+  AnitaPol::AnitaPol_t pol; // polarization
   // Double_t eventPosition[nDim]; // Event position cartesian (m)
   Double_t eventLat; // latitude of position of event
   Double_t eventLon; // longitude of position of event
@@ -59,6 +60,7 @@ public:
   Double_t phiDeg; // reconstruction angle
 
   Int_t inCluster; // ID of cluster
+  Int_t isBase;
   Int_t numEventsInCluster; // number of events in the cluster containing this event
   // Double_t clusterPosition[nDim]; // centroid of cluster cartesian (m)
   Double_t clusterLat; // latitude of centroid of cluster
@@ -106,11 +108,14 @@ public:
     Double_t sigmaPhiDeg; // resolution associated with this snr?
     Double_t error; //
     Int_t inCluster; // which cluster am I associated with?
+    AnitaPol::AnitaPol_t pol; // polarization
 
     Point(Adu5Pat* pat, \
 	  Double_t lat=0, Double_t lon=0, Double_t alt=0,\
-	  Double_t sigmaTheta = 0.5, Double_t sigmaPhi = 1){
+	  Double_t sigmaTheta = 0.5, Double_t sigmaPhi = 1,\
+	  AnitaPol::AnitaPol_t polIn=AnitaPol::kVertical){
 
+      pol = polIn;
       UsefulAdu5Pat usefulPat(pat);
       latitude = lat;
       longitude = lon;
