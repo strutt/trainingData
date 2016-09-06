@@ -68,8 +68,8 @@ int main(int argc, char *argv[])
   UInt_t goodTimesStart[numGoodTimes] = {1419220000};
   UInt_t goodTimesEnd[numGoodTimes] = {1419500000};
 
-  const double findHilbert = 0; //120; //50;
-  const double findImage = 0; //0.074; //0.1; //0.06;
+  const double findHilbert = 80; //120; //50;
+  const double findImage = 0.9; //0.074; //0.1; //0.06;
 
   // const double cutHilbert = 100; //50;
   // const double cutImage = 0.1; //0.06;
@@ -105,7 +105,7 @@ int main(int argc, char *argv[])
     eventSummaryChain->Add(fileName);
 
     // fileName = TString::Format("finalDataQuality/makeMinBiasDataQualityTreesPlots_%d_*.root", run);
-    fileName = TString::Format("filter260-370-400-762/makeMinBiasDataQualityTreesPlots_%d_*.root", run);
+    fileName = TString::Format("finalDataQuality/makeSlimMinBiasDataQualityTreesPlots_%d_*.root", run);
     dataQualityChain->Add(fileName);
 
   }
@@ -130,13 +130,14 @@ int main(int argc, char *argv[])
   headChain->SetBranchAddress("header", &header);
   Adu5Pat* pat = NULL;
   gpsChain->SetBranchAddress("pat", &pat);
-  Double_t peakToPeak[NUM_POL][NUM_SEAVEYS];
-  dataQualityChain->SetBranchAddress("peakToPeak", peakToPeak);
-  // Double_t maxVolts[NUM_POL][NUM_SEAVEYS];
-  // dataQualityChain->SetBranchAddress("maxVolts", maxVolts);
-  // Double_t minVolts[NUM_POL][NUM_SEAVEYS];
-  // dataQualityChain->SetBranchAddress("minVolts", minVolts);
 
+
+  Double_t maxPeakToPeakRatio[NUM_POL];
+  dataQualityChain->SetBranchAddress("maxPeakToPeakRatio", maxPeakToPeakRatio);
+  Double_t theMaxVolts[NUM_POL];
+  dataQualityChain->SetBranchAddress("theMaxVolts", theMaxVolts);
+  Double_t theMinVolts[NUM_POL];
+  dataQualityChain->SetBranchAddress("theMinVolts",theMinVolts);
 
 
   UInt_t eventNumberDQ;
@@ -182,6 +183,11 @@ int main(int argc, char *argv[])
 
   // const int numPeaks = 1;
   const int numPeaks = 1;
+
+  TH1D* hMaxVolts = new TH1D("hMaxVolts", "Maximum amplitude in event", 1024, 0, 5000);
+  TH1D* hMinVolts = new TH1D("hMinVolts", "Minimum amplitude in event", 1024, -5000, 0);
+  TH1D* hAbsSumMaxMin = new TH1D("hAbsSumMaxMin", "hAbsSumMaxMin", 1024, 0, 5000);
+
 
   TH2D* hPeakHeading = new TH2D("hPeakHeading",
 				"Peak Heading; Time; Peak Heading (Degrees)",
@@ -384,21 +390,39 @@ int main(int argc, char *argv[])
       dataQualityChain->GetEntry(entry);
 
       if(eventSummary->eventNumber != eventNumberDQ){
-	std::cerr << "???" << eventSummary->eventNumber << "\t" << eventNumberDQ << std::endl;
+	std::cerr << "??? " << eventSummary->eventNumber << "\t" << eventNumberDQ << std::endl;
       }
+      return 0;
 
 
 
 
-      Double_t maxRatio;
+      AnalysisCuts::Status_t surfSaturation;
+      Double_t maxV = TMath::Max(theMaxVolts[0],  theMaxVolts[1]);
+      Double_t minV = TMath::Max(theMinVolts[0],  theMinVolts[1]);
+      Double_t absSumMaxMin = maxV + minV;
+      surfSaturation = AnalysisCuts::applySurfSaturationCut(maxV, minV, absSumMaxMin);
+
+      if(cutStep >= 1 && surfSaturation==AnalysisCuts::kFail){
+	p.inc(entry, maxEntry);
+	continue;
+      }
+      hMaxVolts->Fill(maxV);
+      hMinVolts->Fill(minV);
+      hAbsSumMaxMin->Fill(absSumMaxMin);
+
       AnalysisCuts::Status_t selfTriggeredBlastCut;
-      selfTriggeredBlastCut = AnalysisCuts::applyBottomToTopRingPeakToPeakRatioCut(pol, peakToPeak[pol], maxRatio);
+      selfTriggeredBlastCut = AnalysisCuts::applyBottomToTopRingPeakToPeakRatioCut(maxPeakToPeakRatio[pol]);
       if(cutStep >= 1 && selfTriggeredBlastCut==AnalysisCuts::kFail){
 	p.inc(entry, maxEntry);
 	continue;
       }
-      hMaxBottomToTopPeakToPeakRatio->Fill(maxRatio);
+      hMaxBottomToTopPeakToPeakRatio->Fill(maxPeakToPeakRatio[pol]);
 
+
+      if(maxPeakToPeakRatio[pol] < 0.9){
+	std::cerr << "low ratio: " << header->run << "\t" << header->eventNumber << std::endl;
+      }
 
 
       // Get event info
@@ -422,7 +446,7 @@ int main(int argc, char *argv[])
 
       l3TriggerCut = AnalysisCuts::L3TriggerDirectionCut(pol, header, recoPhiDeg, deltaPhiSect);
       if(cutStep >= 2 && l3TriggerCut==AnalysisCuts::kFail){
-	std::cerr << "???????" << std::endl;
+	// std::cerr << "???????" << std::endl;
 	p.inc(entry, maxEntry);
 	continue;
       }
@@ -498,11 +522,11 @@ int main(int argc, char *argv[])
 	continue;
       }
 
-      if(isGoodTime==true){
-	std::cout << std::endl << header->eventNumber << "\t" << header->run << "\t"
-		  << imagePeak << "\t" << hilbertPeak << "\t" << fisher << std::endl;
-	std::cerr << maxRatio << "\t" << deltaSolarPhiDeg << "\t" << deltaPhiSect << std::endl;
-      }
+      // if(isGoodTime==true){
+      // 	std::cout << std::endl << header->eventNumber << "\t" << header->run << "\t"
+      // 		  << imagePeak << "\t" << hilbertPeak << "\t" << fisher << std::endl;
+      // 	std::cerr << maxRatio << "\t" << deltaSolarPhiDeg << "\t" << deltaPhiSect << std::endl;
+      // }
 
 
 
@@ -512,7 +536,7 @@ int main(int argc, char *argv[])
       }
 
       if((findImage > 0 && imagePeak >= findImage) || (findHilbert > 0 && hilbertPeak >= findHilbert)){
-      	std::cerr << header->run << "\t" << header->eventNumber << "\t" << imagePeak << "\t" << hilbertPeak << std::endl;;
+      	std::cerr << std::endl << header->run << "\t" << header->eventNumber << "\t" << imagePeak << "\t" << hilbertPeak << std::endl;;
       }
 
 

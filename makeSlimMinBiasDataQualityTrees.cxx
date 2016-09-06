@@ -134,7 +134,9 @@ int main(int argc, char *argv[]){
 			  theMaxVolts,
 			  TString::Format("theMaxVolts[%d]/D",
 					  NUM_POL));
-
+  Double_t alfaChanMaxVolts;
+  dataQualityTree->Branch("alfaChanMaxVolts",
+			  &alfaChanMaxVolts);
 
   // Double_t minVolts[NUM_POL][NUM_SEAVEYS];
   // dataQualityTree->Branch("minVolts",
@@ -164,6 +166,15 @@ int main(int argc, char *argv[]){
   for(Long64_t entry = startEntry; entry < maxEntry; entry++){
 
     headChain->GetEntry(entry);
+
+    Int_t isMinBias = RootTools::isMinBiasSampleEvent(header); //header->getTriggerBitG12() | header->getTriggerBitADU5() | header->getTriggerBitSoftExt();
+
+
+
+    if(isMinBias == 0){
+      p.inc(entry, maxEntry);
+      continue;
+    }
 
     calEventChain->GetEntryWithIndex(header->eventNumber);
 
@@ -214,6 +225,11 @@ int main(int argc, char *argv[]){
 	    minThisChan = v;
 	  }
 
+	  if((AnitaPol::AnitaPol_t)pol==AnitaPol::kHorizontal && ant==4){
+	    if(v > alfaChanMaxVolts){
+	      alfaChanMaxVolts = v;
+	    }
+	  }
 	  // if(v < minVolts[pol][ant]){
 	  //   minVolts[pol][ant] = v;
 	  // }

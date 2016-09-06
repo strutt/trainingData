@@ -45,21 +45,16 @@ int main(int argc, char *argv[]){
   const Int_t lastRun = firstRun; //argc==3 ? atoi(argv[2]) : firstRun;
 
   TChain* headChain = new TChain("headTree");
-  // TChain* gpsChain = new TChain("adu5PatTree");
-  TChain* calEventChain = new TChain("eventTree");
+  TChain* usefulChain = new TChain("eventTree");
 
   for(Int_t run=firstRun; run<=lastRun; run++){
-    // TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/headFile%d.root", run, run);
-    TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/decimatedHeadFile%d.root", run, run);
-    headChain->Add(fileName);
-    // fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/gpsEvent%d.root", run, run);
-    // gpsChain->Add(fileName);
-    // fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/calEventFile%d.root", run, run);
-    // MagicDisplay *magicPtr = new MagicDisplay("https://anita:IceRadio@www.hep.ucl.ac.uk/uhen/anita/private/anita3/flight1415/root/",run,WaveCalType::kDefault);
 
-    fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/calEventFile%d.root", run, run);
-    // fileName = TString::Format("https://anita:IceRadio@www.hep.ucl.ac.uk/uhen/anita/private/anita3/flight1415/root/run%d/calEventFile%d.root", run, run);
-    calEventChain->Add(fileName);
+    TString fileName = TString::Format("~/UCL/ANITA/monteCarlo/run%d/SimulatedAnitaHeadFile%d.root", run, run);
+    headChain->Add(fileName);
+
+    fileName = TString::Format("~/UCL/ANITA/monteCarlo/run%d/SimulatedAnitaEventFile%d.root", run, run);
+    usefulChain->Add(fileName);
+
   }
 
   if(headChain->GetEntries()==0){
@@ -70,20 +65,17 @@ int main(int argc, char *argv[]){
   //   std::cerr << "Unable to find gps files!" << std::endl;
   //   return 1;
   // }
-  if(calEventChain->GetEntries()==0){
+  if(usefulChain->GetEntries()==0){
     std::cerr << "Unable to find calEvent files!" << std::endl;
     return 1;
   }
-
-  calEventChain->BuildIndex("eventNumber");
-  // gpsChain->BuildIndex("eventNumber");
 
   RawAnitaHeader* header = NULL;
   headChain->SetBranchAddress("header", &header);
   // Adu5Pat* pat = NULL;
   // gpsChain->SetBranchAddress("pat", &pat);
-  CalibratedAnitaEvent* calEvent = NULL;
-  calEventChain->SetBranchAddress("event", &calEvent);
+  UsefulAnitaEvent* usefulEvent = NULL;
+  usefulChain->SetBranchAddress("event", &usefulEvent);
 
   OutputConvention oc(argc, argv);
   TString outFileName = oc.getOutputFileName();
@@ -92,7 +84,6 @@ int main(int argc, char *argv[]){
     std::cerr << "Error! Unable to open output file " << outFileName.Data() << std::endl;
     return 1;
   }
-
 
   TTree* dataQualityTree = new TTree("dataQualityTree", "dataQualityTree");
   // AnitaEventSummary* dataQuality = new AnitaEventSummary();
@@ -148,12 +139,6 @@ int main(int argc, char *argv[]){
 			  TString::Format("theMinVolts[%d]/D",
 					  NUM_POL));
 
-  Double_t maxAsym[NUM_POL];
-  dataQualityTree->Branch("maxAsym",
-			  maxAsym,
-			  TString::Format("maxAsym[%d]/D",
-					  NUM_POL));
-
   Long64_t nEntries = headChain->GetEntries();
   Long64_t maxEntry = 0; //2500;
   Long64_t startEntry = 0;
@@ -164,11 +149,8 @@ int main(int argc, char *argv[]){
   for(Long64_t entry = startEntry; entry < maxEntry; entry++){
 
     headChain->GetEntry(entry);
+    usefulChain->GetEntry(entry);
 
-    calEventChain->GetEntryWithIndex(header->eventNumber);
-
-    UsefulAnitaEvent* usefulEvent = new UsefulAnitaEvent(calEvent);
-    // usefulEvent->setAlfaFilterFlag(false);
 
     if(usefulEvent->eventNumber!=header->eventNumber){
       std::cerr << "how did this happen? " << usefulEvent->eventNumber << "\t"
@@ -184,7 +166,6 @@ int main(int argc, char *argv[]){
 
 	TGraph* gr = usefulEvent->getGraph(ant, (AnitaPol::AnitaPol_t) pol);
 
-
 	numPoints[pol][ant] = gr->GetN();
 
 	Double_t maxY;
@@ -198,8 +179,6 @@ int main(int argc, char *argv[]){
 	// maxVolts[pol][ant] = -9999;
 	// minVolts[pol][ant] = 9999;
 	// power[pol][ant] = 0;
-	Double_t maxThisChan = 0;
-	Double_t minThisChan = 0;
 	for(int samp=0; samp < numPoints[pol][ant]; samp++){
 	  Double_t v = gr->GetY()[samp];
 	  // power[pol][ant] += v*v*gr->GetX()[samp];
@@ -207,32 +186,17 @@ int main(int argc, char *argv[]){
 	  // if(v > maxVolts[pol][ant]){
 	  //   maxVolts[pol][ant] = v;
 	  // }
-	  if(v > maxThisChan){
-	    maxThisChan = v;
+	  if(v > theMaxVolts[pol]){
+	    theMaxVolts[pol] = v;
 	  }
-	  if(v < minThisChan){
-	    minThisChan = v;
+	  if(v < theMinVolts[pol]){
+	    theMinVolts[pol] = v;
 	  }
-
 	  // if(v < minVolts[pol][ant]){
 	  //   minVolts[pol][ant] = v;
 	  // }
 
 	}
-
-
-	if(maxThisChan > theMaxVolts[pol]){
-	  theMaxVolts[pol] = maxThisChan;
-	}
-	if(minThisChan < theMinVolts[pol]){
-	  theMinVolts[pol] = minThisChan;
-	}
-
-	Double_t asym = TMath::Abs(maxThisChan + minThisChan);
-	if(asym > maxAsym[pol]){
-	  maxAsym[pol] = asym;
-	}
-
 
 	delete gr;
       }
@@ -255,7 +219,7 @@ int main(int argc, char *argv[]){
 
     }
     dataQualityTree->Fill();
-    delete usefulEvent;
+    // delete usefulEvent;
 
     p.inc(entry, maxEntry);
   }

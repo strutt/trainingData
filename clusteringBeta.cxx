@@ -191,8 +191,54 @@ int main(int argc, char *argv[]){
   clusterer.recursivelyAddClusters(0);
   clusterer.mergeClusters();
 
-  outFile->cd();
 
+  TChain* mcEventSummaryChain = new TChain("eventSummaryTree");
+  for(int mcRun=1; mcRun < 30; mcRun++){
+    TString fileName = TString::Format("monteCarlo/projectionMonteCarloPlots_%d_*.root", mcRun);
+    mcEventSummaryChain->Add(fileName);
+    // mcGpsChain->Add(fileName);
+  }
+  const Long64_t numEntries2 = mcEventSummaryChain->GetEntries();
+  std::cerr << "numEntries2 = " << numEntries2 << std::endl;
+  ProgressBar prog2(numEntries2);
+  AnitaEventSummary* eventSummary2 = NULL;
+  Adu5Pat* pat2 = NULL;
+  Double_t weight = 0;
+  mcEventSummaryChain->SetBranchAddress("weight", &weight);
+  mcEventSummaryChain->SetBranchAddress("pat", &pat2);
+  mcEventSummaryChain->SetBranchAddress("eventSummary", &eventSummary2);
+  for(Long64_t entry2=0; entry2 < mcEventSummaryChain->GetEntries(); entry2++){
+    mcEventSummaryChain->GetEntry(entry2);
+
+    for(Int_t polInd=0; polInd < NUM_POL; polInd++){
+      for(int peakInd=0; peakInd < 5; peakInd++){
+	Double_t sourceLat = eventSummary2->peak[polInd][peakInd].latitude;
+	Double_t sourceLon = eventSummary2->peak[polInd][peakInd].longitude;
+	Double_t sourceAlt = eventSummary2->peak[polInd][peakInd].altitude;
+	if(sourceLat > -999 && sourceLon > -999){
+	  // std::cout << (eventSummary->peak[polInd][peakInd].distanceToSource < 1e6 )<< std::endl;
+	  // if(eventSummary->peak[polInd][peakInd].theta < 0 && eventSummary->peak[polInd][peakInd].distanceToSource < 1e6){
+	  if(eventSummary2->peak[polInd][peakInd].distanceToSource < 1e6){
+
+	    Double_t snr = eventSummary2->peak[polInd][peakInd].snr;
+	    // Double_t sigmaTheta = hResTheta[polInd]->GetBinContent(hResPhi[polInd]->FindBin(snr));
+	    // Double_t sigmaPhi = hResPhi[polInd]->GetBinContent(hResPhi[polInd]->FindBin(snr));
+	    Double_t sigmaTheta = fThetaFit->Eval(snr);
+	    Double_t sigmaPhi = fPhiFit->Eval(snr);
+
+	    // std::cout << polInd << "\t" << snr << "\t" << sigmaTheta << "\t" << sigmaPhi << std::endl;
+
+	    clusterer.addMCPoint(pat, sourceLat,sourceLon,sourceAlt, eventSummary2->run, eventSummary2->eventNumber, sigmaTheta, sigmaPhi, (AnitaPol::AnitaPol_t)polInd, weight);
+	    // Int_t n = clusterer.addPoint(sourceLat,sourceLon,sourceAlt);
+	    // std::cout << n << std::endl;
+	  }
+	}
+      }
+    }
+    prog2++;
+  }
+
+  outFile->cd();
 
   for(int clusterInd=0; clusterInd < clusterer.getNumClusters(); clusterInd++){
     TGraph* gr = clusterer.makeClusterSummaryTGraph(clusterInd);

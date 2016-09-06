@@ -314,9 +314,9 @@ void AnitaClusterer::assignPointsToClosestCluster(){
 size_t AnitaClusterer::addMCPoint(Adu5Pat* pat, Double_t latitude, Double_t longitude, Double_t altitude, Int_t run, UInt_t eventNumber, Double_t sigmaThetaDeg, Double_t sigmaPhiDeg, AnitaPol::AnitaPol_t pol, Double_t weight){
 
   mcpoints.push_back(MCPoint(pat, latitude, longitude, altitude, sigmaThetaDeg, sigmaPhiDeg, pol, weight));
-  eventNumbers.push_back(eventNumber);
-  runs.push_back(run);
-  pats.push_back((Adu5Pat*)pat->Clone());
+  mceventNumbers.push_back(eventNumber);
+  mcruns.push_back(run);
+  mcpats.push_back((Adu5Pat*)pat->Clone());
 
   return points.size();
 }
@@ -1149,6 +1149,8 @@ TTree* AnitaClusterer::makeClusterSummaryTree(TFile* fOut){
 
     clusteredEvent->thetaDeg = point.thetaDeg;
     clusteredEvent->phiDeg = point.phiDeg;
+    clusteredEvent->isMC = 0;
+    clusteredEvent->weight = 1;
 
     Int_t clusterInd = points.at(pointInd).inCluster;
     clusteredEvent->inCluster = clusterInd;
@@ -1172,6 +1174,82 @@ TTree* AnitaClusterer::makeClusterSummaryTree(TFile* fOut){
       // clusteredEvent->distanceToClusterCentroid = get(point, cluster));
       clusteredEvent->minusTwoLogLikelihood = getAngDistSq(point, cluster, pats.at(pointInd));
       UsefulAdu5Pat usefulPat(pats.at(pointInd));
+      clusteredEvent->distanceToClusterCentroid = usefulPat.getDistanceFromSource(cluster.latitude, \
+										  cluster.longitude, \
+										  cluster.altitude);
+
+
+      if(clusteredEvent->secondClosestCluster >= 0){
+	const Cluster& cluster2 = clusters.at(clusteredEvent->secondClosestCluster);
+
+
+	clusteredEvent->distanceToClusterCentroidSecondBest = usefulPat.getDistanceFromSource(cluster2.latitude, \
+											      cluster2.longitude, \
+											      cluster2.altitude);
+      }
+
+      clusteredEvent->numEventsInCluster = cluster.numEvents;
+
+      clusteredEvent->numClusters = numClusters;
+      clusteredEvent->numIterations = numIter;
+    }
+    clusterTree->Fill();
+    delete clusteredEvent;
+  }
+
+
+
+
+  for(Int_t pointInd=0; pointInd < (Int_t)mcpoints.size(); pointInd++){
+
+    const MCPoint& point = mcpoints.at(pointInd);
+
+    clusteredEvent = new ClusteredAnitaEvent();
+    clusteredEvent->eventNumber = mceventNumbers.at(pointInd);
+    clusteredEvent->run = mcruns.at(pointInd);
+    clusteredEvent->pol = point.pol;
+    clusteredEvent->isMC = 1;
+    clusteredEvent->weight = point.weight;
+
+    // convert from km back to m for conversion to lat/lon/alt
+    // for(int dim=0; dim < nDim; dim++){
+    //   // clusteredEvent->eventPosition[dim] = point.centre[dim];
+    //   clusteredEvent->eventPosition[dim] = point.centre[dim];
+    // }
+    clusteredEvent->eventLat = point.latitude;
+    clusteredEvent->eventLon = point.longitude;
+    clusteredEvent->eventAlt = point.altitude;
+
+
+    clusteredEvent->anitaLat = mcpats.at(pointInd)->latitude;
+    clusteredEvent->anitaLon = mcpats.at(pointInd)->longitude;
+    clusteredEvent->anitaAlt = mcpats.at(pointInd)->altitude;
+
+    clusteredEvent->thetaDeg = point.thetaDeg;
+    clusteredEvent->phiDeg = point.phiDeg;
+
+    Int_t clusterInd = mcpoints.at(pointInd).inCluster;
+    clusteredEvent->inCluster = clusterInd;
+    clusteredEvent->isBase = 0;
+
+    if(clusterInd >= 0){
+      const Cluster& cluster = clusters.at(clusterInd);
+
+      clusteredEvent->isBase = clusterInd < numBases ? 1 : 0;
+
+      clusteredEvent->clusterLat = cluster.latitude;
+      clusteredEvent->clusterLon = cluster.longitude;
+      clusteredEvent->clusterAlt = cluster.altitude;
+
+      // Double_t deltaThetaDeg, deltaPhiDeg;
+      getDeltaThetaDegDeltaPhiDegCluster(point, cluster, mcpats.at(pointInd), \
+					 clusteredEvent->deltaThetaDeg, \
+					 clusteredEvent->deltaPhiDeg);
+
+      // clusteredEvent->distanceToClusterCentroid = TMath::Sqrt(getDistSq(point, cluster));
+      // clusteredEvent->distanceToClusterCentroid = get(point, cluster));
+      clusteredEvent->minusTwoLogLikelihood = getAngDistSq(point, cluster, mcpats.at(pointInd));
+      UsefulAdu5Pat usefulPat(mcpats.at(pointInd));
       clusteredEvent->distanceToClusterCentroid = usefulPat.getDistanceFromSource(cluster.latitude, \
 										  cluster.longitude, \
 										  cluster.altitude);

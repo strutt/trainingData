@@ -66,6 +66,9 @@ public:
   Int_t inCluster; // ID of cluster
   Int_t secondClosestCluster; // ID of cluster
 
+  Int_t isMC;
+  Double_t weight;
+
   Int_t isBase;
   Int_t numEventsInCluster; // number of events in the cluster containing this event
   // Double_t clusterPosition[nDim]; // centroid of cluster cartesian (m)
@@ -180,14 +183,16 @@ public:
   };
 
 
+
   class MCPoint : public Point{
   public:
     Double_t weight;
+    explicit MCPoint() : Point(){ weight = 0;}
     explicit MCPoint(Adu5Pat* pat,					\
 		     Double_t lat=0, Double_t lon=0, Double_t alt=0,	\
 		     Double_t sigmaTheta = 0.5, Double_t sigmaPhi = 1,	\
 		     Int_t polIn=AnitaPol::kVertical,
-		     Double_t theWeight=1) : Point(pat,	lat, lon, alt, sigmaTheta, sigmaPhi,polIn){
+		     Double_t theWeight=1) : Point(pat,	lat, lon, alt, sigmaTheta, sigmaPhi, polIn){
       weight = theWeight;
     }
   };
@@ -293,14 +298,17 @@ private:
   Int_t numCallsToRecursive;
 
   std::vector<Point> points; // only variables relevant to clustering
+  std::vector<MCPoint> mcpoints; // only variables relevant to clustering
   std::vector<Adu5Pat*> pats;
+  std::vector<Adu5Pat*> mcpats;
   std::vector<Cluster> clusters; // only variables relevant to clustering
   std::vector<Int_t> seedPoints; // which points seeded which clusters
 
   std::vector<UInt_t> eventNumbers; // keep track of these separately
+  std::vector<UInt_t> mceventNumbers; // keep track of these separately
   std::vector<Int_t> runs; // keep track of these separately
-  std::vector<Double_t> deltaTheta;
-  std::vector<Double_t> deltaPhi;
+  std::vector<Int_t> mcruns; // keep track of these separately
+
   Bool_t initialized;
   Double_t minimalImprovement;
 

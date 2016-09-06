@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
 
   Int_t firstRun = 130; //atoi(argv[1]);
   Int_t lastRun = 434;
-  const bool useTimeCut = false; //true;
+  const bool useTimeCut = true; //false; //true;
 
   std::cout << firstRun << "\t" << lastRun << std::endl;
   const int cutStep = atoi(argv[1]);
@@ -67,8 +67,8 @@ int main(int argc, char *argv[])
   UInt_t goodTimesStart[numGoodTimes] = {1419220000};
   UInt_t goodTimesEnd[numGoodTimes] = {1419500000};
 
-  const double findHilbert = 0; //120; //50;
-  const double findImage = 0; //0.074; //0.1; //0.06;
+  // const double findHilbert = 0; //120; //50;
+  // const double findImage = 0; //0.074; //0.1; //0.06;
 
   // const double cutHilbert = 100; //50;
   // const double cutImage = 0.1; //0.06;
@@ -514,9 +514,9 @@ int main(int argc, char *argv[])
 	continue;
       }
 
-      if(imagePeak < 0.075 || (imagePeak < 0.3 && hilbertPeak > 200)){
-      	std::cout << std::endl << header->run << "\t" << header->eventNumber << "\t" << imagePeak << "\t" << hilbertPeak << "\t" << fisher << std::endl;
-      }
+      // if(imagePeak < 0.075 || (imagePeak < 0.3 && hilbertPeak > 200)){
+      // 	std::cout << std::endl << header->run << "\t" << header->eventNumber << "\t" << imagePeak << "\t" << hilbertPeak << "\t" << fisher << std::endl;
+      // }
 
 
 
@@ -556,9 +556,9 @@ int main(int argc, char *argv[])
 
 
 
-      if(imagePeak < 0.075 || (imagePeak < 0.3 && hilbertPeak > 200)){
-      	std::cout << std::endl << header->run << "\t" << header->eventNumber << "\t" << imagePeak << "\t" << hilbertPeak << "\t" << fisher << std::endl;
-      }
+      // if(imagePeak < 0.075 || (imagePeak < 0.3 && hilbertPeak > 200)){
+      // 	std::cout << std::endl << header->run << "\t" << header->eventNumber << "\t" << imagePeak << "\t" << hilbertPeak << "\t" << fisher << std::endl;
+      // }
 
 
 
@@ -574,9 +574,9 @@ int main(int argc, char *argv[])
 	continue;
       }
 
-      if((findImage > 0 && imagePeak >= findImage) || (findHilbert > 0 && hilbertPeak >= findHilbert)){
-      	std::cerr << header->run << "\t" << header->eventNumber << "\t" << imagePeak << "\t" << hilbertPeak << std::endl;;
-      }
+      // if((findImage > 0 && imagePeak >= findImage) || (findHilbert > 0 && hilbertPeak >= findHilbert)){
+      // 	std::cerr << header->run << "\t" << header->eventNumber << "\t" << imagePeak << "\t" << hilbertPeak << std::endl;;
+      // }
 
 
       if(recoPhiDeg < 0) recoPhiDeg += 360;
