@@ -50,6 +50,7 @@ int main(int argc, char *argv[]){
   TChain* gpsChain = new TChain("adu5PatTree");
   // TChain* calEventChain = new TChain("eventTree");
   TChain* usefulChain = new TChain("eventTree");
+  TChain* iceChain = new TChain("passing_events");
 
   for(Int_t run=firstRun; run<=lastRun; run++){
     // TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/headFile%d.root", run, run);
@@ -61,6 +62,9 @@ int main(int argc, char *argv[]){
 
     fileName = TString::Format("~/UCL/ANITA/monteCarlo/run%d/SimulatedAnitaEventFile%d.root", run, run);
     usefulChain->Add(fileName);
+
+    fileName = TString::Format("~/UCL/ANITA/monteCarlo/run%d/icefinal%d.root", run, run);
+    iceChain->Add(fileName);
   }
 
   if(headChain->GetEntries()==0){
@@ -72,6 +76,10 @@ int main(int argc, char *argv[]){
     return 1;
   }
   if(usefulChain->GetEntries()==0){
+    std::cerr << "Unable to find calEvent files!" << std::endl;
+    return 1;
+  }
+  if(iceChain->GetEntries()==0){
     std::cerr << "Unable to find calEvent files!" << std::endl;
     return 1;
   }
@@ -125,10 +133,39 @@ int main(int argc, char *argv[]){
   comments2->Write();
   delete comments2;
 
+  double sourceLat, sourceLon, sourceAlt, sourceMag;
+  double thetaWave,phiWave;
+  double weight;
+  double posnu[3];
+  double rfexit[5][3];
+  double r_bn[3], r_enterice[3], r_in[3];
+  double e_component;
+  int inu;
+
+  iceChain->SetBranchAddress("inu",          &inu              );
+  iceChain->SetBranchAddress("sourceLon",    &sourceLon        );
+  iceChain->SetBranchAddress("sourceLat",    &sourceLat        );
+  iceChain->SetBranchAddress("sourceAlt",    &sourceAlt        );
+  iceChain->SetBranchAddress("sourceMag",    &sourceMag        );
+  iceChain->SetBranchAddress("posnu",        &posnu            );
+  iceChain->SetBranchAddress("rfexit",       &rfexit           );
+  iceChain->SetBranchAddress("r_bn",         &r_bn             );
+  iceChain->SetBranchAddress("r_enterice",   &r_enterice       );
+  iceChain->SetBranchAddress("r_in",         &r_in             );
+  iceChain->SetBranchAddress("weight",       &weight           );
+  iceChain->SetBranchAddress("e_component",  &e_component      );
+
   TTree* eventSummaryTree = new TTree("eventSummaryTree", "eventSummaryTree");
   // AnitaEventSummary* eventSummary = new AnitaEventSummary();
   AnitaEventSummary* eventSummary = NULL; //new AnitaEventSummary();
   eventSummaryTree->Branch("eventSummary", &eventSummary);
+  eventSummaryTree->Branch("header", &header);
+  eventSummaryTree->Branch("pat", &pat    );
+  eventSummaryTree->Branch("thetaExpectedDeg",&thetaWave );
+  eventSummaryTree->Branch("phiExpectedDeg", &phiWave   );
+  eventSummaryTree->Branch("weight", &weight    );
+  eventSummaryTree->Branch("e_component", &e_component);
+
 
   Long64_t nEntries = headChain->GetEntries();
   Long64_t maxEntry = 0; //2513; //33;
@@ -143,18 +180,16 @@ int main(int argc, char *argv[]){
 
     gpsChain->GetEntry(entry);
     usefulChain->GetEntry(entry);
-
+    iceChain->GetEntry(entry);
     UsefulAdu5Pat usefulPat(pat);
 
     // cc->reconstructEvent(usefulEvent, myNumPeaksCoarse, myNumPeaksFine);
     AnitaPol::AnitaPol_t peakPol = cc->reconstructEventPeakPol(usefulEvent, myNumPeaksCoarse, myNumPeaksFine);
 
-
     eventSummary = new AnitaEventSummary(header, &usefulPat);
     // std::cout << eventSummary->sun.theta << "\t" << eventSummary->sun.phi << std::endl;
 
     Double_t minY = 0;
-
 
     for(Int_t polInd=0; polInd < AnitaPol::kNotAPol; polInd++){
 
@@ -223,6 +258,12 @@ int main(int argc, char *argv[]){
     eventSummary->flags.isVarner = 0; //!< Not sure I will use this.
     eventSummary->flags.isVarner2 = 0; //!< Not sure I will use this.
     eventSummary->flags.pulser = AnitaEventSummary::EventFlags::NONE; //!< Not yet.
+
+
+    usefulPat.getThetaAndPhiWave(sourceLon, sourceLat, sourceAlt, thetaWave,phiWave);
+    thetaWave*=TMath::RadToDeg();
+    phiWave*=TMath::RadToDeg();
+
 
     // delete usefulEvent;
 

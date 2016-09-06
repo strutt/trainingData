@@ -311,6 +311,21 @@ void AnitaClusterer::assignPointsToClosestCluster(){
 
 
 
+size_t AnitaClusterer::addMCPoint(Adu5Pat* pat, Double_t latitude, Double_t longitude, Double_t altitude, Int_t run, UInt_t eventNumber, Double_t sigmaThetaDeg, Double_t sigmaPhiDeg, AnitaPol::AnitaPol_t pol, Double_t weight){
+
+  mcpoints.push_back(MCPoint(pat, latitude, longitude, altitude, sigmaThetaDeg, sigmaPhiDeg, pol, weight));
+  eventNumbers.push_back(eventNumber);
+  runs.push_back(run);
+  pats.push_back((Adu5Pat*)pat->Clone());
+
+  return points.size();
+}
+
+
+
+
+
+
 size_t AnitaClusterer::addPoint(Adu5Pat* pat, Double_t latitude, Double_t longitude, Double_t altitude, Int_t run, UInt_t eventNumber, Double_t sigmaThetaDeg, Double_t sigmaPhiDeg, AnitaPol::AnitaPol_t pol){
 
   points.push_back(Point(pat, latitude, longitude, altitude, sigmaThetaDeg, sigmaPhiDeg, pol));

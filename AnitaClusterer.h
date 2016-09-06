@@ -27,6 +27,7 @@
 #include "AntarcticaMapPlotter.h"
 
 #include "assert.h"
+#include "AnitaConventions.h"
 
 
 #define nDim 3
@@ -125,9 +126,9 @@ public:
     Point(Adu5Pat* pat, \
 	  Double_t lat=0, Double_t lon=0, Double_t alt=0,\
 	  Double_t sigmaTheta = 0.5, Double_t sigmaPhi = 1,\
-	  AnitaPol::AnitaPol_t polIn=AnitaPol::kVertical){
+	  Int_t polIn=AnitaPol::kVertical){
 
-      pol = polIn;
+      pol = (AnitaPol::AnitaPol_t) polIn;
       UsefulAdu5Pat usefulPat(pat);
       latitude = lat;
       longitude = lon;
@@ -176,6 +177,19 @@ public:
       }
     virtual ~Point(){ ;}
     ClassDef(Point, 1)
+  };
+
+
+  class MCPoint : public Point{
+  public:
+    Double_t weight;
+    explicit MCPoint(Adu5Pat* pat,					\
+		     Double_t lat=0, Double_t lon=0, Double_t alt=0,	\
+		     Double_t sigmaTheta = 0.5, Double_t sigmaPhi = 1,	\
+		     Int_t polIn=AnitaPol::kVertical,
+		     Double_t theWeight=1) : Point(pat,	lat, lon, alt, sigmaTheta, sigmaPhi,polIn){
+      weight = theWeight;
+    }
   };
 
 
@@ -239,6 +253,7 @@ public:
 
   AnitaClusterer(Int_t nClusters, Int_t numIterations, Int_t approxNumPoints=0);
   size_t addPoint(Adu5Pat* pat, Double_t latitude, Double_t longitude, Double_t altitude, Int_t run, UInt_t eventNumber, Double_t sigmaThetaDeg, Double_t sigmaPhiDeg, AnitaPol::AnitaPol_t pol);
+  size_t addMCPoint(Adu5Pat* pat, Double_t latitude, Double_t longitude, Double_t altitude, Int_t run, UInt_t eventNumber, Double_t sigmaThetaDeg, Double_t sigmaPhiDeg, AnitaPol::AnitaPol_t pol, Double_t weight);
   void kMeansCluster(Int_t iterationsPerCout=0);
 
   TGraph* makeClusterSummaryTGraph(Int_t clusterInd);
