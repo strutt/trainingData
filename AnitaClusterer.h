@@ -53,19 +53,28 @@ public:
   Double_t eventAlt; // altitude of posiiton of event
 
   Double_t distanceToClusterCentroid; // distance (km) from point to centroid
+  Double_t distanceToClusterCentroidSecondBest; // distance (km) from point to centroid
   Double_t minusTwoLogLikelihood; // distance in some normalized error units TODO
+  Double_t minusTwoLogLikelihoodSecondBest; // distance in some normalized error units TODO
+
   Double_t deltaThetaDeg; // angular distance to cluster centre
   Double_t deltaPhiDeg; // angular distance to cluster centre
   Double_t thetaDeg; // reconstruction angle
   Double_t phiDeg; // reconstruction angle
 
   Int_t inCluster; // ID of cluster
+  Int_t secondClosestCluster; // ID of cluster
+
   Int_t isBase;
   Int_t numEventsInCluster; // number of events in the cluster containing this event
   // Double_t clusterPosition[nDim]; // centroid of cluster cartesian (m)
   Double_t clusterLat; // latitude of centroid of cluster
   Double_t clusterLon; // longitude of centroid of cluster
   Double_t clusterAlt; // altitude of centroid of cluster
+
+  Double_t anitaLat; // latitude of centroid of cluster
+  Double_t anitaLon; // longitude of centroid of cluster
+  Double_t anitaAlt; // altitude of centroid of cluster
 
   Int_t numClusters; // Total number of clusters (maybe gratuitous)
   Int_t numIterations; // number of loop iterations (maybe gratuitous)
@@ -108,6 +117,9 @@ public:
     Double_t sigmaPhiDeg; // resolution associated with this snr?
     Double_t error; //
     Int_t inCluster; // which cluster am I associated with?
+    Double_t errorSecondBest;
+    Int_t secondClosestCluster;
+
     AnitaPol::AnitaPol_t pol; // polarization
 
     Point(Adu5Pat* pat, \
@@ -132,6 +144,9 @@ public:
       sigmaPhiDeg = sigmaPhi;
       error = 0;
       inCluster = -1;
+      errorSecondBest = 0;
+      secondClosestCluster = -1;
+
       AnitaGeomTool* geom = AnitaGeomTool::Instance();
       geom->getCartesianCoords(lat, lon, alt, centre);
       // for(int dim=0; dim < nDim; dim++){
@@ -180,6 +195,7 @@ public:
       latitude = 0;
       longitude = 0;
       altitude = 0;
+      maxDist = 0;
     }
 
     explicit Cluster(const Point& seedPoint) {
@@ -191,6 +207,7 @@ public:
       }
       numEvents = 1; // since the seed point will be in this cluster
       totalError = 0;
+      maxDist = 0;
     }
 
 
@@ -203,6 +220,7 @@ public:
       geom->getCartesianCoords(latitude, longitude, altitude, centre);
       numEvents = 0;
       totalError = 0;
+      maxDist = 0;
     }
 
     Double_t centre[nDim];
@@ -211,6 +229,7 @@ public:
     Double_t altitude;
     Int_t numEvents;
     Double_t totalError;
+    Double_t maxDist;
 
     virtual ~Cluster(){ ;}
     ClassDef(Cluster, 1)
@@ -219,7 +238,7 @@ public:
 
 
   AnitaClusterer(Int_t nClusters, Int_t numIterations, Int_t approxNumPoints=0);
-  size_t addPoint(Adu5Pat* pat, Double_t latitude, Double_t longitude, Double_t altitude, Int_t run, UInt_t eventNumber, Double_t sigmaThetaDeg, Double_t sigmaPhiDeg);
+  size_t addPoint(Adu5Pat* pat, Double_t latitude, Double_t longitude, Double_t altitude, Int_t run, UInt_t eventNumber, Double_t sigmaThetaDeg, Double_t sigmaPhiDeg, AnitaPol::AnitaPol_t pol);
   void kMeansCluster(Int_t iterationsPerCout=0);
 
   TGraph* makeClusterSummaryTGraph(Int_t clusterInd);
@@ -239,6 +258,7 @@ public:
   void recursivelyAddClusters(Int_t minBinContent);
 
 
+  void mergeClusters();
   double llCut;
 private:
 

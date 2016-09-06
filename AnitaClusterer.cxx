@@ -59,6 +59,17 @@ inline Double_t getDistSq(const AnitaClusterer::Point& point, const AnitaCluster
 
 
 // utility function hopefully this one gets inlined
+inline Double_t getDistSq(AnitaClusterer::Cluster& cluster1, const AnitaClusterer::Cluster& cluster2){
+  Double_t d2=0;
+  for(int dim=0; dim < nDim; dim++){
+    Double_t d = cluster1.centre[dim] - cluster2.centre[dim];
+    d2 += d*d;
+  }
+  return d2;
+}
+
+
+// utility function hopefully this one gets inlined
 // inline Double_t getAngDistSq(const AnitaClusterer::Point& point, const AnitaClusterer::Cluster& cluster, UsefulAdu5Pat& usefulPat){
 // inline Double_t getAngDistSq(const AnitaClusterer::Point& point, const AnitaClusterer::Cluster& cluster, const Adu5Pat* pat){
 
@@ -200,6 +211,7 @@ void AnitaClusterer::assignPointsToClosestCluster(){
   // const double llCut = 30;
   // const double llCut = 1e99;
   const double maxDistCluster = 800e3; // try 800km
+
   for(int clusterInd=0; clusterInd < numClusters; clusterInd++){
     clusters.at(clusterInd).numEvents = 0;
   }
@@ -225,7 +237,10 @@ void AnitaClusterer::assignPointsToClosestCluster(){
 						       clusters.at(clusterInd).longitude,
 						       clusters.at(clusterInd).altitude);
 
-      if(distM < maxDistCluster){
+      Double_t deltaDistM = 0;
+      // Double_t deltaDistM = clusters.at(clusterInd).maxDist;
+
+      if(distM - deltaDistM < maxDistCluster){
 
 	// Double_t d2 = getDistSq(points.at(pointInd), clusters.at(clusterInd));
 	Double_t d2 = getAngDistSq(points.at(pointInd), clusters.at(clusterInd), pats.at(pointInd));
@@ -255,6 +270,7 @@ void AnitaClusterer::assignPointsToClosestCluster(){
     // if(minD2 >= maxSigmaAway){
       // minClusterInd = -1;
     // }
+    points.at(pointInd).secondClosestCluster = points.at(pointInd).inCluster;
     points.at(pointInd).inCluster = minClusterInd;
     if(minClusterInd < 0 ){
       // std::cerr << "Bollocks \t" << pointInd << std::endl;
@@ -263,7 +279,13 @@ void AnitaClusterer::assignPointsToClosestCluster(){
     }
     else{
       clusters.at(minClusterInd).numEvents++;
+      // points.at(pointInd).error = minD2;
+
+      points.at(pointInd).errorSecondBest = points.at(pointInd).error;
       points.at(pointInd).error = minD2;
+
+
+
     }
   }
 
@@ -289,9 +311,9 @@ void AnitaClusterer::assignPointsToClosestCluster(){
 
 
 
-size_t AnitaClusterer::addPoint(Adu5Pat* pat, Double_t latitude, Double_t longitude, Double_t altitude, Int_t run, UInt_t eventNumber, Double_t sigmaThetaDeg, Double_t sigmaPhiDeg){
+size_t AnitaClusterer::addPoint(Adu5Pat* pat, Double_t latitude, Double_t longitude, Double_t altitude, Int_t run, UInt_t eventNumber, Double_t sigmaThetaDeg, Double_t sigmaPhiDeg, AnitaPol::AnitaPol_t pol){
 
-  points.push_back(Point(pat, latitude, longitude, altitude, sigmaThetaDeg, sigmaPhiDeg));
+  points.push_back(Point(pat, latitude, longitude, altitude, sigmaThetaDeg, sigmaPhiDeg, pol));
   eventNumbers.push_back(eventNumber);
   runs.push_back(run);
   pats.push_back((Adu5Pat*)pat->Clone());
@@ -426,8 +448,37 @@ void AnitaClusterer::maxDistanceInitialize(Int_t seed){
 
 
 
+void AnitaClusterer::mergeClusters(){
 
+  // const double minClusterSeparation = 100e3;
+  const int numBases = BaseList::getNumBases();
+  for(int clusterInd=0; clusterInd < numClusters; clusterInd++){
+    if(clusterInd >= numBases){
+      Cluster& cluster1 = clusters.at(clusterInd);
+      Double_t thisMinSeparation = 1e99;
+      Int_t thisOtherCluster = -1;
+      for(int clusterInd2=0; clusterInd2 < numClusters; clusterInd2++){
+	if(clusterInd==clusterInd2){
+	  continue;
+	}
+	Cluster& cluster2 = clusters.at(clusterInd2);
+	Double_t clusterSeparation = TMath::Sqrt(getDistSq(cluster1, cluster2));
 
+	// std::cout << clusterInd << "\t" << clusterInd2 << "\t" << clusterSeparation/1e3 << std::endl;
+	// if(clusterSeparation < minClusterSeparation){
+	//   std::cerr << clusterInd << "\t" << clusterInd2 << "\t" << clusterSeparation/1e3 << "\t" << cluster1.numEvents << "\t" << cluster2.numEvents << std::endl;
+	//   break;
+	// }
+	if(clusterSeparation < thisMinSeparation){
+	  thisMinSeparation = clusterSeparation;
+	  thisOtherCluster = clusterInd2;
+	}
+      }
+      std::cerr << clusterInd << "\t" << thisOtherCluster << "\t" << thisMinSeparation/1e3 << "\t"
+		<< cluster1.numEvents << "\t" << clusters.at(thisOtherCluster).numEvents << std::endl;
+    }
+  }
+}
 
 
 
@@ -955,6 +1006,12 @@ Double_t AnitaClusterer::assignErrorValues(){
       points.at(pointInd).error = d2;
       clusters.at(clusterInd).totalError += d2;
       sumClusterErrors += d2;
+
+      Double_t deltaDistM = getDistSq(points.at(pointInd), clusters.at(clusterInd));
+      if(deltaDistM > clusters.at(clusterInd).maxDist){
+	clusters.at(clusterInd).maxDist = deltaDistM;
+      }
+
     }
     else{
       points.at(pointInd).error = -9999;
@@ -1069,6 +1126,12 @@ TTree* AnitaClusterer::makeClusterSummaryTree(TFile* fOut){
     clusteredEvent->eventLat = point.latitude;
     clusteredEvent->eventLon = point.longitude;
     clusteredEvent->eventAlt = point.altitude;
+
+
+    clusteredEvent->anitaLat = pats.at(pointInd)->latitude;
+    clusteredEvent->anitaLon = pats.at(pointInd)->longitude;
+    clusteredEvent->anitaAlt = pats.at(pointInd)->altitude;
+
     clusteredEvent->thetaDeg = point.thetaDeg;
     clusteredEvent->phiDeg = point.phiDeg;
 
@@ -1097,6 +1160,16 @@ TTree* AnitaClusterer::makeClusterSummaryTree(TFile* fOut){
       clusteredEvent->distanceToClusterCentroid = usefulPat.getDistanceFromSource(cluster.latitude, \
 										  cluster.longitude, \
 										  cluster.altitude);
+
+
+      if(clusteredEvent->secondClosestCluster >= 0){
+	const Cluster& cluster2 = clusters.at(clusteredEvent->secondClosestCluster);
+
+
+	clusteredEvent->distanceToClusterCentroidSecondBest = usefulPat.getDistanceFromSource(cluster2.latitude, \
+											      cluster2.longitude, \
+											      cluster2.altitude);
+      }
 
       clusteredEvent->numEventsInCluster = cluster.numEvents;
 

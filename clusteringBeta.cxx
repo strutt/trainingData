@@ -173,7 +173,7 @@ int main(int argc, char *argv[]){
 
 	    // std::cout << polInd << "\t" << snr << "\t" << sigmaTheta << "\t" << sigmaPhi << std::endl;
 
-	    clusterer.addPoint(pat, sourceLat,sourceLon,sourceAlt, eventSummary->run, eventSummary->eventNumber, sigmaTheta, sigmaPhi);
+	    clusterer.addPoint(pat, sourceLat,sourceLon,sourceAlt, eventSummary->run, eventSummary->eventNumber, sigmaTheta, sigmaPhi, (AnitaPol::AnitaPol_t)polInd);
 	    // Int_t n = clusterer.addPoint(sourceLat,sourceLon,sourceAlt);
 	    // std::cout << n << std::endl;
 	  }
@@ -184,10 +184,12 @@ int main(int argc, char *argv[]){
   }
 
   // clusterer.kMeansCluster(1);
+  // clusterer.llCut = 2500;
+  // clusterer.llCut = 2000; //2000;
   clusterer.llCut = 1500;
   clusterer.initializeBaseList();
   clusterer.recursivelyAddClusters(0);
-  // clusterer.recursivelyAddClusters(5);
+  clusterer.mergeClusters();
 
   outFile->cd();
 
@@ -206,7 +208,7 @@ int main(int argc, char *argv[]){
 
   // no need to write?
   TTree* clusterTreeBases = clusterer.makeClusterSummaryTree(outFile);
-  clusterTreeBases->BuildIndex("eventNumber");
+  // clusterTreeBases->BuildIndex("eventNumber");
   std::cout << "Made clusterTree with " << clusterTreeBases->GetEntries() << " entries." << std::endl;
 
   ClusteredAnitaEvent* clusteredEvent = 0;
