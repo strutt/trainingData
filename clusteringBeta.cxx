@@ -32,6 +32,7 @@
 #include "AntarcticaMapPlotter.h"
 
 #include "AnitaClusterer.h"
+#include "AnalysisCuts.h"
 
 
 int main(int argc, char *argv[]){
@@ -49,10 +50,10 @@ int main(int argc, char *argv[]){
   const Int_t firstRun = atoi(argv[1]);
   const Int_t lastRun = argc==3 ? atoi(argv[2]) : firstRun;
 
-  TChain* eventSummaryChain = new TChain("eventSummaryTree");
+  TChain* eventSummaryChain = new TChain("cutTree");
   // TChain* headChain = new TChain("headTree");
   // TChain* indexedHeadChain = new TChain("headTree");
-  TChain* gpsChain = new TChain("adu5PatTree");
+  // TChain* gpsChain = new TChain("adu5PatTree");
 
   for(Int_t run=firstRun; run<=lastRun; run++){
     if(run>=257 && run<=263){
@@ -73,7 +74,7 @@ int main(int argc, char *argv[]){
     // indexedHeadChain->Add(fileName);
 
     // fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/gpsEvent%d.root", run, run);
-    gpsChain->Add(fileName);
+    // gpsChain->Add(fileName);
   }
 
   if(eventSummaryChain->GetEntries()==0){
@@ -81,10 +82,10 @@ int main(int argc, char *argv[]){
     return 1;
   }
 
-  if(gpsChain->GetEntries()==0){
-    std::cerr << "Unable to find gps files!" << std::endl;
-    return 1;
-  }
+  // if(gpsChain->GetEntries()==0){
+  //   std::cerr << "Unable to find gps files!" << std::endl;
+  //   return 1;
+  // }
 
   // if(indexedHeadChain->GetEntries()==0){
   //   std::cerr << "Unable to find header files!" << std::endl;
@@ -102,13 +103,13 @@ int main(int argc, char *argv[]){
   hResPhi[AnitaPol::kHorizontal] = (TH1D*) fRes->Get("hDeltaPhiWais2_2__3__3");
   hResTheta[AnitaPol::kVertical] = (TH1D*) fRes->Get("hDeltaThetaLdb2_2__2__2");
   hResPhi[AnitaPol::kVertical] = (TH1D*) fRes->Get("hDeltaPhiLdb2_2__1__1");
-  std::cout << hResTheta[AnitaPol::kHorizontal] << "\t" << hResPhi[AnitaPol::kHorizontal] << "\t";
-  std::cout << hResTheta[AnitaPol::kVertical] << "\t" << hResPhi[AnitaPol::kVertical] << std::endl;
+  // std::cout << hResTheta[AnitaPol::kHorizontal] << "\t" << hResPhi[AnitaPol::kHorizontal] << "\t";
+  // std::cout << hResTheta[AnitaPol::kVertical] << "\t" << hResPhi[AnitaPol::kVertical] << std::endl;
 
-  std::cout << hResTheta[AnitaPol::kHorizontal]->GetListOfFunctions()->GetEntries() << "\t"
-	    << hResPhi[AnitaPol::kHorizontal]->GetListOfFunctions()->GetEntries() << "\t";
-  std::cout << hResTheta[AnitaPol::kVertical]->GetListOfFunctions()->GetEntries() << "\t"
-	    << hResPhi[AnitaPol::kVertical]->GetListOfFunctions()->GetEntries() << std::endl;
+  // std::cout << hResTheta[AnitaPol::kHorizontal]->GetListOfFunctions()->GetEntries() << "\t"
+  // 	    << hResPhi[AnitaPol::kHorizontal]->GetListOfFunctions()->GetEntries() << "\t";
+  // std::cout << hResTheta[AnitaPol::kVertical]->GetListOfFunctions()->GetEntries() << "\t"
+  // 	    << hResPhi[AnitaPol::kVertical]->GetListOfFunctions()->GetEntries() << std::endl;
 
 
   TF1* fThetaFit = (TF1*) (hResTheta[AnitaPol::kHorizontal]->GetListOfFunctions()->At(0));
@@ -121,8 +122,28 @@ int main(int argc, char *argv[]){
 
   AnitaEventSummary* eventSummary = NULL;
   eventSummaryChain->SetBranchAddress("eventSummary", &eventSummary);
+  AnitaPol::AnitaPol_t pol = AnitaPol::kHorizontal;
+  eventSummaryChain->SetBranchAddress("pol", &pol);
+
+
+
+  // AnalysisCuts::Status_t l3TriggerCut;
+  // eventSummaryChain->SetBranchAddress("l3TriggerCut", (int*)&l3TriggerCut);
+  // AnalysisCuts::Status_t surfSaturation;
+  // eventSummaryChain->SetBranchAddress("surfSaturation", (int*)&surfSaturation);
+  // AnalysisCuts::Status_t selfTriggeredBlastCut;
+  // eventSummaryChain->SetBranchAddress("selfTriggeredBlastCut", (int*)&selfTriggeredBlastCut);
+  // AnalysisCuts::Status_t thermalCut;
+  // eventSummaryChain->SetBranchAddress("thermalCut", (int*)&thermalCut);
+  // AnalysisCuts::Status_t thetaAngleCut;
+  // eventSummaryChain->SetBranchAddress("thetaAngleCut", (int*)&thetaAngleCut);
+  // AnalysisCuts::Status_t peakRatioCut;
+  // eventSummaryChain->SetBranchAddress("peakRatioCut", (int*)&peakRatioCut);
+
+
   Adu5Pat* pat = NULL;
-  gpsChain->SetBranchAddress("pat", &pat);
+  // gpsChain->SetBranchAddress("pat", &pat);
+  eventSummaryChain->SetBranchAddress("pat", &pat);
   // UInt_t eventNumberPat = 0;
   // gpsChain->SetBranchAddress("eventNumber", &eventNumberPat);
 
@@ -143,53 +164,49 @@ int main(int argc, char *argv[]){
 
   const int K = 50;
   const int numIterations = 10;
-  AnitaClusterer clusterer(K, numIterations);
+  AnitaClusterer clusterer(K, numIterations, nEntries);
 
   for(Long64_t entry = startEntry; entry < maxEntry; entry++){
     eventSummaryChain->GetEntry(entry);
 
-    // Long64_t entry2 = indexedHeadChain->GetEntryNumberWithIndex(eventSummary->eventNumber);
-    gpsChain->GetEntry(entry);
+    // if(l3TriggerCut==0 && surfSaturation==0 && selfTriggeredBlastCut==0 && thermalCut==0 && thetaAngleCut == 0 && peakRatioCut==0){
 
-    // if(eventSummary->eventNumber!=eventNumberPat){
-    //   std::cerr << "fuck" << std::endl;
-    // }
+      // Long64_t entry2 = indexedHeadChain->GetEntryNumberWithIndex(eventSummary->eventNumber);
+      // gpsChain->GetEntry(entry);
 
-    for(Int_t polInd=0; polInd < NUM_POL; polInd++){
-      for(int peakInd=0; peakInd < 5; peakInd++){
-	Double_t sourceLat = eventSummary->peak[polInd][peakInd].latitude;
-	Double_t sourceLon = eventSummary->peak[polInd][peakInd].longitude;
-	Double_t sourceAlt = eventSummary->peak[polInd][peakInd].altitude;
-	if(sourceLat > -999 && sourceLon > -999){
-	  // std::cout << (eventSummary->peak[polInd][peakInd].distanceToSource < 1e6 )<< std::endl;
-	  // if(eventSummary->peak[polInd][peakInd].theta < 0 && eventSummary->peak[polInd][peakInd].distanceToSource < 1e6){
-	  if(eventSummary->peak[polInd][peakInd].distanceToSource < 1e6){
+      // if(eventSummary->eventNumber!=eventNumberPat){
+      //   std::cerr << "fuck" << std::endl;
+      // }
 
-	    Double_t snr = eventSummary->peak[polInd][peakInd].snr;
-	    // Double_t sigmaTheta = hResTheta[polInd]->GetBinContent(hResPhi[polInd]->FindBin(snr));
-	    // Double_t sigmaPhi = hResPhi[polInd]->GetBinContent(hResPhi[polInd]->FindBin(snr));
-	    Double_t sigmaTheta = fThetaFit->Eval(snr);
-	    Double_t sigmaPhi = fPhiFit->Eval(snr);
+      for(Int_t polInd=0; polInd < NUM_POL; polInd++){
+	for(int peakInd=0; peakInd < 5; peakInd++){
+	  Double_t sourceLat = eventSummary->peak[polInd][peakInd].latitude;
+	  Double_t sourceLon = eventSummary->peak[polInd][peakInd].longitude;
+	  Double_t sourceAlt = eventSummary->peak[polInd][peakInd].altitude;
+	  if(sourceLat > -999 && sourceLon > -999){
+	    if(eventSummary->peak[polInd][peakInd].distanceToSource >= 0 && eventSummary->peak[polInd][peakInd].distanceToSource < 1e6){
 
-	    // std::cout << polInd << "\t" << snr << "\t" << sigmaTheta << "\t" << sigmaPhi << std::endl;
+	      Double_t snr = eventSummary->peak[polInd][peakInd].snr;
+	      Double_t sigmaTheta = fThetaFit->Eval(snr);
+	      Double_t sigmaPhi = fPhiFit->Eval(snr);
 
-	    clusterer.addPoint(pat, sourceLat,sourceLon,sourceAlt, eventSummary->run, eventSummary->eventNumber, sigmaTheta, sigmaPhi, (AnitaPol::AnitaPol_t)polInd);
-	    // Int_t n = clusterer.addPoint(sourceLat,sourceLon,sourceAlt);
-	    // std::cout << n << std::endl;
+	      clusterer.addPoint(pat, sourceLat,sourceLon,sourceAlt, eventSummary->run, eventSummary->eventNumber, sigmaTheta, sigmaPhi, (AnitaPol::AnitaPol_t)polInd);
+	    }
 	  }
 	}
       }
-    }
+    // }
     p++;
   }
 
   // clusterer.kMeansCluster(1);
   // clusterer.llCut = 2500;
   // clusterer.llCut = 2000; //2000;
-  clusterer.llCut = 1500;
+  // clusterer.llCut = 60; //250;
+  clusterer.llCut = 250;
   clusterer.initializeBaseList();
   clusterer.recursivelyAddClusters(0);
-  clusterer.mergeClusters();
+  // clusterer.mergeClusters();
 
 
   TChain* mcEventSummaryChain = new TChain("eventSummaryTree");
@@ -228,7 +245,10 @@ int main(int argc, char *argv[]){
 
 	    // std::cout << polInd << "\t" << snr << "\t" << sigmaTheta << "\t" << sigmaPhi << std::endl;
 
-	    clusterer.addMCPoint(pat, sourceLat,sourceLon,sourceAlt, eventSummary2->run, eventSummary2->eventNumber, sigmaTheta, sigmaPhi, (AnitaPol::AnitaPol_t)polInd, weight);
+	    clusterer.addMCPoint(pat2, sourceLat, sourceLon, sourceAlt,
+				 eventSummary2->run, eventSummary2->eventNumber,
+				 sigmaTheta, sigmaPhi, (AnitaPol::AnitaPol_t)polInd, weight);
+	    // std::cerr << pat2->altitude << "\t" << pat2->latitude << "\t" << pat->longitude << std::endl;
 	    // Int_t n = clusterer.addPoint(sourceLat,sourceLon,sourceAlt);
 	    // std::cout << n << std::endl;
 	  }
@@ -237,6 +257,8 @@ int main(int argc, char *argv[]){
     }
     prog2++;
   }
+
+  clusterer.assignMCPointsToClusters();
 
   outFile->cd();
 
@@ -253,13 +275,13 @@ int main(int argc, char *argv[]){
   }
 
   // no need to write?
-  TTree* clusterTreeBases = clusterer.makeClusterSummaryTree(outFile);
-  // clusterTreeBases->BuildIndex("eventNumber");
-  std::cout << "Made clusterTree with " << clusterTreeBases->GetEntries() << " entries." << std::endl;
+  TTree* clusterTree = clusterer.makeClusterSummaryTree(outFile);
+  // clusterTree->BuildIndex("eventNumber");
+  std::cout << "Made clusterTree with " << clusterTree->GetEntries() << " entries." << std::endl;
 
   ClusteredAnitaEvent* clusteredEvent = 0;
-  clusterTreeBases->SetBranchAddress("clusteredEvent", &clusteredEvent);
-  eventSummaryChain->BuildIndex("eventNumber");
+  clusterTree->SetBranchAddress("clusteredEvent", &clusteredEvent);
+  // eventSummaryChain->BuildIndex("eventNumber");
 
 
 
@@ -268,7 +290,7 @@ int main(int argc, char *argv[]){
   TH1D* hDeltaPeak = new TH1D("hDeltaPeak", "Map peaks; P1-P2", 1024, -1, 1);
   TH1D* hDeltaPeak2 = new TH1D("hDeltaPeak2", "Map peaks; p1/(P1-P2)", 1024, -1, 1);
   for(Long64_t entry = startEntry; entry < maxEntry; entry++){
-    clusterTreeBases->GetEntry(entry);
+    clusterTree->GetEntry(entry);
 
     if(clusteredEvent->inCluster < 0){
       eventSummaryChain->GetEntryWithIndex(clusteredEvent->eventNumber);

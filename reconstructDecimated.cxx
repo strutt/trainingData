@@ -50,6 +50,7 @@ int main(int argc, char *argv[]){
   TChain* indexedHeadChain = new TChain("headTree");
   TChain* gpsChain = new TChain("adu5PatTree");
   TChain* calEventChain = new TChain("eventTree");
+  TChain* filterChain = new TChain("filterTree");
 
   for(Int_t run=firstRun; run<=lastRun; run++){
     // TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/headFile%d.root", run, run);
@@ -64,6 +65,8 @@ int main(int argc, char *argv[]){
 
     fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/calEventFile%d.root", run, run);
     calEventChain->Add(fileName);
+
+    fileName = TString::Format("~/UCL/ANITA/anita3Analysis/powerSpectra/powSpecPlots/findFrequencyBinsAboveRayleighThresholdPlots_%d_*.root", run, run);
   }
 
   if(headChain->GetEntries()==0){

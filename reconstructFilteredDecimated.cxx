@@ -103,11 +103,8 @@ int main(int argc, char *argv[]){
   gpsChain->SetBranchAddress("pat", &pat);
   CalibratedAnitaEvent* calEvent = NULL;
   calEventChain->SetBranchAddress("event", &calEvent);
-
-
   TBits* filterBits = NULL;
   filterChain->SetBranchAddress(TString::Format("filterBitsRisingEdge%d", filterInd), &filterBits);
-
 
   OutputConvention oc(argc, argv);
   TString outFileName = oc.getOutputFileName();

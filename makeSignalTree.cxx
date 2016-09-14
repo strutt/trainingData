@@ -3,7 +3,7 @@
  Author: Ben Strutt
  Email: b.strutt.12@ucl.ac.uk
 
- Description:             
+ Description:
 ********************************************************************************************************* */
 
 #include "TFile.h"
@@ -36,65 +36,71 @@
 int main(int argc, char *argv[])
 {
 
-  if(!(argc==3 || argc==2)){
-    std::cerr << "Usage 1: " << argv[0] << " [run]" << std::endl;
-    std::cerr << "Usage 2: " << argv[0] << " [firstRun] [lastRun]" << std::endl;
-    return 1;
-  }
-  
-  std::cout << argv[0] << "\t" << argv[1];
-  if(argc==3){std::cout << "\t" << argv[2];}
-  std::cout << std::endl;
-  const Int_t firstRun = atoi(argv[1]);
-  const Int_t lastRun = argc==3 ? atoi(argv[2]) : firstRun;
+  TFile* inFile = OutputConvention::getFile("plotReconstructedWaisPlots_*.root");
+  TTree* cutTree = (TTree*) inFile->Get("cutTree");
+
+  UInt_t eventNumber = 0;
+  cutTree->SetBranchAddress("eventNumber", &eventNumber);
+
+  AnitaPol::AnitaPol_t pol;
+  cutTree->SetBranchAddress("pol", (Int_t*)&pol);
+
+  Double_t maxV, minV, absSumMaxMin;
+  cutTree->SetBranchAddress("maxV", &maxV);
+  cutTree->SetBranchAddress("minV",&minV);
+  cutTree->SetBranchAddress("absSumMaxMin", &absSumMaxMin);
+  AnalysisCuts::Status_t surfSaturation;
+  cutTree->SetBranchAddress("surfSaturation",(Int_t*) &surfSaturation);
+
+  Double_t theMaxPeakToPeakRatio;
+  cutTree->SetBranchAddress("theMaxPeakToPeakRatio", &theMaxPeakToPeakRatio);
+  AnalysisCuts::Status_t selfTriggeredBlastCut;
+  cutTree->SetBranchAddress("selfTriggeredBlastCut",(Int_t*) &selfTriggeredBlastCut);
+
+  Int_t deltaPhiSect;
+  cutTree->SetBranchAddress("deltaPhiSect", &deltaPhiSect);
+  AnalysisCuts::Status_t l3TriggerCut;
+  cutTree->SetBranchAddress("l3TriggerCut", (Int_t*)&l3TriggerCut);
 
 
-  const int polInd = AnitaPol::kHorizontal;
-  
-  TChain* headChain = new TChain("headTree");
-  TChain* eventSummaryChain = new TChain("eventSummaryTree");
-  TChain* dataQualityChain = new TChain("dataQualityTree");    
+  Double_t deltaSolarPhiDeg, deltaSolarThetaDeg;
+  cutTree->SetBranchAddress("deltaSolarPhiDeg", &deltaSolarPhiDeg);
+  cutTree->SetBranchAddress("deltaSolarThetaDeg", &deltaSolarThetaDeg);
+  AnalysisCuts::Status_t sunCut;
+  cutTree->SetBranchAddress("sunCut", (Int_t*)&sunCut);
 
-  for(Int_t run=firstRun; run<=lastRun; run++){
-    if(run>=257 && run<=263){
-      continue;
-    }
 
-    TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/headFile%d.root", run, run);
-    headChain->Add(fileName);
+  Double_t imagePeak, hilbertPeak, fisher;
+  cutTree->SetBranchAddress("imagePeak", &imagePeak);
+  cutTree->SetBranchAddress("hilbertPeak", &hilbertPeak);
+  cutTree->SetBranchAddress("fisher", &fisher);
+  AnalysisCuts::Status_t thermalCut;
+  cutTree->SetBranchAddress("thermalCut", (Int_t*)&thermalCut);
 
-    fileName = TString::Format("filter260-370-400-762-5peaks/reconstructWaisPlots_%d_*.root", run);
-    // TString fileName = TString::Format("filter260and370/reconstructWaisPlots_%d_*.root", run);    
-    // TString fileName = TString::Format("test400MHzExt/reconstructDecimatedPlots_%d_*.root", run);    
-    eventSummaryChain->Add(fileName);
-    
-    fileName = TString::Format("filter260-370-400-762/makeWaisDataQualityTreesPlots_%d*.root", run);
-    dataQualityChain->Add(fileName);
-  }
 
-  if(headChain->GetEntries()==0){
-    std::cerr << "Unable to find header files!" << std::endl;
-    return 1;
-  }
-  if(eventSummaryChain->GetEntries()==0){
-    std::cerr << "Unable to find eventSummary files!" << std::endl;
-    return 1;
-  }
-  if(dataQualityChain->GetEntries()==0){
-    std::cerr << "Unable to find dataQualityFiles files!" << std::endl;
-    return 1;
-  }
-  
-  Double_t peakToPeak[NUM_POL][NUM_SEAVEYS];
-  dataQualityChain->SetBranchAddress("peakToPeak", peakToPeak);
-  UInt_t eventNumberDQ;
-  dataQualityChain->SetBranchAddress("eventNumber", &eventNumberDQ);
-  AnitaEventSummary* eventSummary = NULL;
-  eventSummaryChain->SetBranchAddress("eventSummary", &eventSummary);  
-  RawAnitaHeader* header = NULL;
-  headChain->SetBranchAddress("header", &header);
-  headChain->BuildIndex("eventNumber");
-  
+  Double_t peakRatio ,imagePeak2;
+  cutTree->SetBranchAddress("peakRatio", &peakRatio);
+  cutTree->SetBranchAddress("imagePeak2", &imagePeak2);
+  AnalysisCuts::Status_t peakRatioCut;
+  cutTree->SetBranchAddress("peakRatioCut", (int*)&peakRatioCut);
+
+  Double_t recoThetaDeg;
+  cutTree->SetBranchAddress("recoThetaDeg", &recoThetaDeg);
+  AnalysisCuts::Status_t thetaAngleCut;
+  cutTree->SetBranchAddress("thetaAngleCut", (int*)&thetaAngleCut);
+
+  Double_t recoPhiDeg;
+  cutTree->SetBranchAddress("recoPhiDeg", &recoPhiDeg);
+  Double_t directionWrtNorth;
+  cutTree->SetBranchAddress("directionWrtNorth", &directionWrtNorth);
+  Adu5Pat* pat2;
+  cutTree->SetBranchAddress("pat", &pat2);
+  RawAnitaHeader* header2;
+  cutTree->SetBranchAddress("header", &header2);
+
+
+
+
   OutputConvention oc(argc, argv);
   TString outFileName = oc.getOutputFileName();
   TFile* outFile = new TFile(outFileName, "recreate");
@@ -102,16 +108,16 @@ int main(int argc, char *argv[])
     std::cerr << "Error! Unable to open output file " << outFileName.Data() << std::endl;
     return 1;
   }
-  
+
   TTree* outTree = new TTree("signalTree", "HQ WAIS Events");
-  UInt_t eventNumber;
-  outTree->Branch("eventNumber", &eventNumber);  
-  Double_t imagePeak;
+  // UInt_t eventNumber;
+  outTree->Branch("eventNumber", &eventNumber);
+  // Double_t imagePeak;
   outTree->Branch("imagePeak", &imagePeak);
-  Double_t hilbertPeak;
+  // Double_t hilbertPeak;
   outTree->Branch("hilbertPeak", &hilbertPeak);
 
-  Long64_t nEntries = eventSummaryChain->GetEntries();
+  Long64_t nEntries = cutTree->GetEntries();
   Long64_t maxEntry = 0; //2500;
   Long64_t startEntry = 0;
   if(maxEntry<=0 || maxEntry > nEntries) maxEntry = nEntries;
@@ -119,68 +125,17 @@ int main(int argc, char *argv[])
   ProgressBar p(maxEntry-startEntry);
 
   for(Long64_t entry = startEntry; entry < maxEntry; entry++){
-    eventSummaryChain->GetEntry(entry);
-    dataQualityChain->GetEntry(entry);
-    Int_t entry2 = headChain->GetEntryNumberWithIndex(eventSummary->eventNumber);
 
-    if(entry2 < 0){
-      std::cerr << "??????????" << std::endl;
-    }
-    else{
-      const int peakInd = 0;
-      AnitaPol::AnitaPol_t pol = AnitaPol::kHorizontal;
-      Double_t maxRatio;
-      AnalysisCuts::Status_t selfTriggeredBlastCut;
-      selfTriggeredBlastCut = AnalysisCuts::applyBottomToTopRingPeakToPeakRatioCut(pol, peakToPeak[pol], maxRatio);
-      if(selfTriggeredBlastCut==AnalysisCuts::kFail){
-	p.inc(entry, maxEntry);	
-	continue;
-      }
+    cutTree->GetEntry(entry);
 
-      
-      Double_t recoPhiDeg = eventSummary->peak[pol][peakInd].phi;
-      recoPhiDeg += recoPhiDeg < 0 ? DEGREES_IN_CIRCLE : 0;      
-      // Double_t recoThetaDeg = eventSummary->peak[pol][peakInd].theta;
-      imagePeak = eventSummary->peak[pol][peakInd].value;      
-      hilbertPeak = eventSummary->coherent[pol][peakInd].peakHilbert;
-
-      
-
-      
-      // CUT FLOW
-      // Step 2: cut phi-sector angle triggers
-      Int_t deltaPhiSect = NUM_PHI/2;
-
-      AnalysisCuts::Status_t l3TriggerCut;
-      l3TriggerCut = AnalysisCuts::L3TriggerDirectionCut(pol, header, recoPhiDeg, deltaPhiSect);
-      if(l3TriggerCut==AnalysisCuts::kFail){
-	p.inc(entry, maxEntry);	
-	continue;
-      }
-
-
-      Double_t solarPhiDeg = eventSummary->sun.phi;
-      Double_t deltaSolarPhiDeg = RootTools::getDeltaAngleDeg(recoPhiDeg, solarPhiDeg);
-      AnalysisCuts::Status_t sunCut;
-      sunCut = AnalysisCuts::applySunPointingCut(deltaSolarPhiDeg);
-      if(sunCut==AnalysisCuts::kFail){
-	p.inc(entry, maxEntry);	
-	continue;
-      }
-    
-      // imagePeak = eventSummary->peak[polInd][1].value;
-      // hilbertPeak = eventSummary->coherent[polInd][1].peakHilbert;
-      imagePeak = eventSummary->peak[polInd][peakInd].value;
-      hilbertPeak = eventSummary->coherent[polInd][peakInd].peakHilbert;
-
+    if(l3TriggerCut==0 && surfSaturation==0 && selfTriggeredBlastCut==0 && sunCut==0){
       outTree->Fill();
     }
     p.inc(entry, maxEntry);
   }
-  
+
   outFile->Write();
   outFile->Close();
 
   return 0;
 }
-

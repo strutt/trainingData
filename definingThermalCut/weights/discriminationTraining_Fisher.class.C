@@ -10,10 +10,10 @@ Method         : Fisher::Fisher
 TMVA Release   : 4.2.1         [262657]
 ROOT Release   : 6.06/06       [394758]
 Creator        : benstrutt
-Date           : Mon Sep  5 00:00:24 2016
+Date           : Tue Sep 13 21:13:25 2016
 Host           : Darwin macavity-the-mystery-cat.local 14.5.0 Darwin Kernel Version 14.5.0: Thu Jun 16 19:58:21 PDT 2016; root:xnu-2782.50.4~1/RELEASE_X86_64 x86_64
 Dir            : /Users/benstrutt/UCL/ANITA/anita3Analysis/trainingData/definingThermalCut
-Training events: 118241
+Training events: 87030
 Analysis type  : [Classification]
 
 
@@ -34,8 +34,8 @@ IgnoreNegWeightsInTraining: "False" [Events with negative weights are ignored in
 #VAR -*-*-*-*-*-*-*-*-*-*-*-* variables *-*-*-*-*-*-*-*-*-*-*-*-
 
 NVar 2
-imagePeak                     imagePeak                     imagePeak                     imagePeak                                                       'D'    [0.032781906426,0.437673002481]
-hilbertPeak                   hilbertPeak                   hilbertPeak                   hilbertPeak                                                     'D'    [20.0961780548,259.69821167]
+imagePeak                     imagePeak                     imagePeak                     imagePeak                                                       'D'    [0.0341443121433,0.443173319101]
+hilbertPeak                   hilbertPeak                   hilbertPeak                   hilbertPeak                                                     'D'    [20.0961780548,243.045333862]
 NSpec 0
 
 
@@ -166,9 +166,9 @@ class ReadFisher : public IClassifierReader {
 
 inline void ReadFisher::Initialize() 
 {
-   fFisher0 = -2.80469110308;
-   fFisherCoefficients.push_back( 15.9060934554 );
-   fFisherCoefficients.push_back( 0.00742922115199 );
+   fFisher0 = -2.7732830149;
+   fFisherCoefficients.push_back( 14.5088950553 );
+   fFisherCoefficients.push_back( 0.0104461315064 );
 
    // sanity check
    if (fFisherCoefficients.size() != fNvars) {

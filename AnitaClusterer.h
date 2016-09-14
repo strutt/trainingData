@@ -24,6 +24,7 @@
 
 #include "RootTools.h"
 #include "BaseList.h"
+#include "ProgressBar.h"
 #include "AntarcticaMapPlotter.h"
 
 #include "assert.h"
@@ -147,9 +148,9 @@ public:
       // dPhi = 0;
       sigmaThetaDeg = sigmaTheta;
       sigmaPhiDeg = sigmaPhi;
-      error = 0;
+      error = DBL_MAX;
       inCluster = -1;
-      errorSecondBest = 0;
+      errorSecondBest = DBL_MAX;
       secondClosestCluster = -1;
 
       AnitaGeomTool* geom = AnitaGeomTool::Instance();
@@ -172,8 +173,11 @@ public:
       // dPhi = 0;
       sigmaThetaDeg = -9999;
       sigmaPhiDeg = -9999;
-      error = 0;
+      error = DBL_MAX;
       inCluster = -1;
+      errorSecondBest = DBL_MAX;
+      secondClosestCluster = -1;
+
       for(int dim=0; dim < nDim; dim++){
       	centre[dim] = 0;
       }

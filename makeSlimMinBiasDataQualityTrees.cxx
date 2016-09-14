@@ -49,8 +49,8 @@ int main(int argc, char *argv[]){
   TChain* calEventChain = new TChain("eventTree");
 
   for(Int_t run=firstRun; run<=lastRun; run++){
-    // TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/headFile%d.root", run, run);
-    TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/decimatedHeadFile%d.root", run, run);
+    TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/headFile%d.root", run, run);
+    // TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/decimatedHeadFile%d.root", run, run);
     headChain->Add(fileName);
     // fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/gpsEvent%d.root", run, run);
     // gpsChain->Add(fileName);
@@ -191,6 +191,7 @@ int main(int argc, char *argv[]){
     for(int pol=0; pol<NUM_POL; pol++){
       theMaxVolts[pol] = 0;
       theMinVolts[pol] = 0;
+      maxAsym[pol] = 0;
       for(Int_t ant=0; ant<NUM_SEAVEYS; ant++){
 
 	TGraph* gr = usefulEvent->getGraph(ant, (AnitaPol::AnitaPol_t) pol);
