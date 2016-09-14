@@ -66,8 +66,8 @@ int main(int argc, char *argv[])
     }
 
     // TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/headFile%d.root", run, run);
-    TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/headFile%d.root", run, run);
-    // TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/indexedBlindHeadFile%d.root", run, run);
+    // TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/headFile%d.root", run, run);
+    TString fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/indexedBlindHeadFile%d.root", run, run);
     headChain->Add(fileName);
 
     fileName = TString::Format("~/UCL/ANITA/flight1415/root/run%d/gpsEvent%d.root", run, run);
@@ -81,7 +81,8 @@ int main(int argc, char *argv[])
     // }
     eventSummaryChain->Add(fileName);
 
-    fileName = TString::Format("finalDataQuality/makeSlimMinBiasDataQualityTreesPlots_%d_*.root", run);
+    // fileName = TString::Format("finalDataQuality/makeSlimMinBiasDataQualityTreesPlots_%d_*.root", run);
+    fileName = TString::Format("../reconstruction/eventSummaries/makeSlimDataQualityTreesPlots_%d_*.root", run);
     dataQualityChain->Add(fileName);
   }
 
@@ -199,7 +200,7 @@ int main(int argc, char *argv[])
 
   std::cerr << "building index" << std::endl;
   headChain->BuildIndex("eventNumber");
-  dataQualityChain->BuildIndex("eventNumber");
+  // dataQualityChain->BuildIndex("eventNumber");
   std::cerr << "done" << std::endl;
 
   for(Long64_t entry = startEntry; entry < maxEntry; entry++){
@@ -232,7 +233,8 @@ int main(int argc, char *argv[])
 
 
       // dataQualityChain->GetEntry(entry);
-      dataQualityChain->GetEntryWithIndex(header->eventNumber);
+      // dataQualityChain->GetEntryWithIndex(header->eventNumber);
+      dataQualityChain->GetEntry(headEntry);
 
       if(eventSummary->eventNumber != eventNumberDQ){
 	std::cerr << "??? " << eventSummary->eventNumber << "\t" << eventNumberDQ << std::endl;

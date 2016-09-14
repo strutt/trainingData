@@ -121,11 +121,10 @@ public:
     Double_t dPhi; // phi distance to cluster
     Double_t sigmaThetaDeg; // resolution associated with this snr?
     Double_t sigmaPhiDeg; // resolution associated with this snr?
-    Double_t error; //
+    Double_t ll; //
     Int_t inCluster; // which cluster am I associated with?
-    Double_t errorSecondBest;
+    Double_t llSecondBest;
     Int_t secondClosestCluster;
-
     AnitaPol::AnitaPol_t pol; // polarization
 
     Point(Adu5Pat* pat, \
@@ -148,9 +147,9 @@ public:
       // dPhi = 0;
       sigmaThetaDeg = sigmaTheta;
       sigmaPhiDeg = sigmaPhi;
-      error = DBL_MAX;
+      ll = DBL_MAX;
       inCluster = -1;
-      errorSecondBest = DBL_MAX;
+      llSecondBest = DBL_MAX;
       secondClosestCluster = -1;
 
       AnitaGeomTool* geom = AnitaGeomTool::Instance();
@@ -173,11 +172,10 @@ public:
       // dPhi = 0;
       sigmaThetaDeg = -9999;
       sigmaPhiDeg = -9999;
-      error = DBL_MAX;
+      ll = DBL_MAX;
       inCluster = -1;
-      errorSecondBest = DBL_MAX;
+      llSecondBest = DBL_MAX;
       secondClosestCluster = -1;
-
       for(int dim=0; dim < nDim; dim++){
       	centre[dim] = 0;
       }
@@ -220,6 +218,8 @@ public:
       longitude = 0;
       altitude = 0;
       maxDist = 0;
+      numPointsWithinMinLL = 0;
+
     }
 
     explicit Cluster(const Point& seedPoint) {
@@ -232,6 +232,7 @@ public:
       numEvents = 1; // since the seed point will be in this cluster
       totalError = 0;
       maxDist = 0;
+      numPointsWithinMinLL = 0;
     }
 
 
@@ -254,6 +255,7 @@ public:
     Int_t numEvents;
     Double_t totalError;
     Double_t maxDist;
+    Int_t numPointsWithinMinLL;
 
     virtual ~Cluster(){ ;}
     ClassDef(Cluster, 1)
@@ -280,14 +282,20 @@ public:
   Int_t histogramUnclusteredEvents(Int_t& globalMaxBin);
   void recursivelyAddClusters(Int_t minBinContent);
   void assignMCPointsToClusters();
-
+  void assignEventsToDefaultClusters();
   void mergeClusters();
+  void findClosestPointToClustersOfSizeOne();
   double llCut;
   double maxDistCluster;
+
+
+
+  void resetClusters();
 
 private:
 
   void assignSinglePointToCloserCluster(Int_t pointInd, Int_t isMC, Int_t clusterInd);
+
 
   Cluster seedCluster(Point& point);
 
@@ -328,7 +336,7 @@ private:
   std::vector<Int_t> ampBinNumbers;
   std::vector<Int_t> ampBinNumbers2;
 
-
+  bool doneDefaultAssignment;
 
 };
 

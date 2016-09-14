@@ -18,7 +18,7 @@ AnitaClusterer::AnitaClusterer(Int_t nClusters, Int_t numIterations, Int_t appro
   numCallsToRecursive = 0;
   minimalImprovement  = 0.01;
   // can use this to move cluster around surface, 3D positions correctly becomes 2D problem
-
+  doneDefaultAssignment = false;
   surfaceModel = RampdemReader::Instance();
   amp = new AntarcticaMapPlotter();
 }
@@ -172,6 +172,10 @@ Int_t AnitaClusterer::histogramUnclusteredEvents(Int_t& globalMaxBin){
 
 void AnitaClusterer::recursivelyAddClusters(Int_t minBinContent){
 
+  if(doneDefaultAssignment==false){
+    assignEventsToDefaultClusters();
+  }
+
   numCallsToRecursive++;
   Int_t globalMaxBin;
   Int_t maxBinVal = histogramUnclusteredEvents(globalMaxBin);
@@ -210,11 +214,11 @@ void AnitaClusterer::recursivelyAddClusters(Int_t minBinContent){
     const int isMC = 0;
     for(int pointInd=0; pointInd < (Int_t) points.size(); pointInd++){
       assignSinglePointToCloserCluster(pointInd, isMC, numClusters-1);
-      // std::cout << pointInd << "\t" << points.at(pointInd).error << "\t" << std::endl;
+      // std::cout << pointInd << "\t" << points.at(pointInd).ll << "\t" << std::endl;
     }
 
-    std::cout << counter << "\t" << maxBinVal << "\t" << clusters.back().latitude << "\t"
-	      << clusters.back().longitude << "\t" << hUnclustereds.back()->Integral() << std::endl;
+    // std::cout << counter << "\t" << maxBinVal << "\t" << clusters.back().latitude << "\t"
+    // 	      << clusters.back().longitude << "\t" << hUnclustereds.back()->Integral() << std::endl;
 
 
     // if(hUnclustereds.size() < 10){
@@ -222,6 +226,59 @@ void AnitaClusterer::recursivelyAddClusters(Int_t minBinContent){
     // }
   }
 }
+
+
+
+
+void AnitaClusterer::findClosestPointToClustersOfSizeOne(){
+
+  // loop through clusters and find the ones that have a size of one
+  Int_t numSinglets = 0;
+  for(int clusterInd=0; clusterInd < numClusters; clusterInd++){
+    if(clusters.at(clusterInd).numEvents == 1){
+
+      Cluster& cluster = clusters.at(clusterInd);
+
+      // find the point in this cluster
+      Int_t isolatedPointInd = -1;
+      for(int pointInd=0; pointInd < (int)points.size(); pointInd++){
+	if(points.at(pointInd).inCluster==clusterInd){
+	  isolatedPointInd = pointInd;
+	  break;
+	}
+      }
+
+      assert(isolatedPointInd!=-1);
+
+      Int_t numNearPoints = 0;
+
+      // now loop through and see how close this isolated cluster is close to any other point...
+      for(int pointInd=0; pointInd < (int)points.size(); pointInd++){
+	if(pointInd!=isolatedPointInd){
+	  UsefulAdu5Pat usefulPat(pats.at(pointInd));
+	  Double_t dist = usefulPat.getDistanceFromSource(cluster.latitude, cluster.longitude, cluster.altitude);
+
+	  if(dist < maxDistCluster){
+	    Double_t ll = getAngDistSq(points.at(pointInd), cluster, usefulPat);
+
+	    if(ll < llCut){
+	      numNearPoints++;
+	      cluster.numPointsWithinMinLL++;
+	    }
+	  }
+	}
+      }
+
+      std::cout << runs.at(isolatedPointInd) << "\t" << eventNumbers.at(isolatedPointInd) << "\t"
+		<< clusterInd << "\t" << numNearPoints << std::endl;
+      numSinglets++;
+    }
+  }
+
+  // std::cout << "numSinglets = " << numSinglets << std::endl;
+
+}
+
 
 
 
@@ -243,11 +300,11 @@ void AnitaClusterer::assignSinglePointToCloserCluster(Int_t pointInd, Int_t isMC
 
     if(ll < llCut){
 
-      if(ll < point.error){
+      if(ll < point.ll){
 	point.secondClosestCluster = point.inCluster;
-	point.errorSecondBest = point.error;
+	point.llSecondBest = point.ll;
 
-	point.error = ll;
+	point.ll = ll;
 	point.inCluster = clusterInd;
 
 	if(isMC==0){
@@ -314,6 +371,17 @@ size_t AnitaClusterer::addPoint(Adu5Pat* pat, Double_t latitude, Double_t longit
 
 
 
+void AnitaClusterer::assignEventsToDefaultClusters(){
+  ProgressBar p(numClusters);
+  const int isMC = 0;
+    for(int clusterInd=0; clusterInd < numClusters; clusterInd++){
+      for(int pointInd=0; pointInd < (int) points.size(); pointInd++){
+	assignSinglePointToCloserCluster(pointInd, isMC, clusterInd);
+      }
+    p++;
+  }
+  doneDefaultAssignment = true;
+}
 
 
 
@@ -321,25 +389,38 @@ size_t AnitaClusterer::addPoint(Adu5Pat* pat, Double_t latitude, Double_t longit
 void AnitaClusterer::initializeBaseList(){
 
   numClusters = (int) BaseList::getNumBases();
-  const int isMC = 0;
   std::cout << "Initializing base list..." << std::endl;
-  ProgressBar p(numClusters);
   for(int clusterInd=0; clusterInd < numClusters; clusterInd++){
     const BaseList::base& base = BaseList::getBase(clusterInd);
 
     clusters.push_back(Cluster(base));
 
-    for(int pointInd=0; pointInd < (int) points.size(); pointInd++){
-      assignSinglePointToCloserCluster(pointInd, isMC, clusterInd);
-    }
-    p++;
   }
   initialized = true;
 }
 
 
 
+void AnitaClusterer::resetClusters(){
 
+  for(int pointInd=0; pointInd < (int) points.size(); pointInd++){
+    points.at(pointInd).ll = DBL_MAX;
+    points.at(pointInd).llSecondBest = DBL_MAX;
+    points.at(pointInd).inCluster = -1;
+    points.at(pointInd).secondClosestCluster = -1;
+  }
+
+  const int numBases = BaseList::getNumBases();
+  while((int) clusters.size() >= numBases){
+    clusters.pop_back();
+  }
+  numClusters = clusters.size();
+
+  for(int clusterInd=0; clusterInd < (int) numClusters; clusterInd++){
+    clusters.at(clusterInd).numEvents = 0;
+  }
+  doneDefaultAssignment = false;
+}
 
 
 
@@ -492,12 +573,14 @@ TTree* AnitaClusterer::makeClusterSummaryTree(TFile* fOut){
 
       clusteredEvent->numClusters = numClusters;
 
-      clusterTree->Fill();
     }
     else{
       std::cerr << "clusterInd = " << clusterInd << ". ";
       std::cerr << "This shouldn't be possible!" << std::endl;
     }
+    clusterTree->Fill();
+
+
     delete clusteredEvent;
   }
 

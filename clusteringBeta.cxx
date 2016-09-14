@@ -177,35 +177,47 @@ int main(int argc, char *argv[]){
       // if(eventSummary->eventNumber!=eventNumberPat){
       //   std::cerr << "fuck" << std::endl;
       // }
+    const int peakInd = 0;
 
-      for(Int_t polInd=0; polInd < NUM_POL; polInd++){
-	for(int peakInd=0; peakInd < 5; peakInd++){
-	  Double_t sourceLat = eventSummary->peak[polInd][peakInd].latitude;
-	  Double_t sourceLon = eventSummary->peak[polInd][peakInd].longitude;
-	  Double_t sourceAlt = eventSummary->peak[polInd][peakInd].altitude;
-	  if(sourceLat > -999 && sourceLon > -999){
-	    if(eventSummary->peak[polInd][peakInd].distanceToSource >= 0 && eventSummary->peak[polInd][peakInd].distanceToSource < 1e6){
+    Double_t sourceLat = eventSummary->peak[pol][peakInd].latitude;
+    Double_t sourceLon = eventSummary->peak[pol][peakInd].longitude;
+    Double_t sourceAlt = eventSummary->peak[pol][peakInd].altitude;
+    if(sourceLat > -999 && sourceLon > -999){
+      if(eventSummary->peak[pol][peakInd].distanceToSource > 1 && eventSummary->peak[pol][peakInd].distanceToSource < 1e6){
 
-	      Double_t snr = eventSummary->peak[polInd][peakInd].snr;
-	      Double_t sigmaTheta = fThetaFit->Eval(snr);
-	      Double_t sigmaPhi = fPhiFit->Eval(snr);
+	Double_t snr = eventSummary->peak[pol][peakInd].snr;
+	Double_t sigmaTheta = fThetaFit->Eval(snr);
+	Double_t sigmaPhi = fPhiFit->Eval(snr);
 
-	      clusterer.addPoint(pat, sourceLat,sourceLon,sourceAlt, eventSummary->run, eventSummary->eventNumber, sigmaTheta, sigmaPhi, (AnitaPol::AnitaPol_t)polInd);
-	    }
-	  }
-	}
+	clusterer.addPoint(pat, sourceLat,sourceLon,sourceAlt, eventSummary->run, eventSummary->eventNumber, sigmaTheta, sigmaPhi, pol);
       }
-    // }
+    }
+
     p++;
   }
 
-  // clusterer.kMeansCluster(1);
-  // clusterer.llCut = 2500;
-  // clusterer.llCut = 2000; //2000;
-  // clusterer.llCut = 60; //250;
-  clusterer.llCut = 250;
   clusterer.initializeBaseList();
-  clusterer.recursivelyAddClusters(0);
+
+  const int numLLs = 10;
+  const double deltaLL = 100;
+  double llCuts[numLLs] = {100, 200, 300};
+  for(int j=0; j < numLLs; j++){
+    llCuts[j] = (j+1)*deltaLL;
+  }
+
+  for(int i=0; i < numLLs; i++){
+    clusterer.llCut = llCuts[i];
+    clusterer.resetClusters();
+    clusterer.recursivelyAddClusters(0);
+
+    std::cout << "********************************" << std::endl;
+    std::cout << "llCut = " << llCuts[i] << std::endl;
+    std::cout << "********************************" << std::endl;
+    clusterer.findClosestPointToClustersOfSizeOne();
+  }
+
+
+
   // clusterer.mergeClusters();
 
 
