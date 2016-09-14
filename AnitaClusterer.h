@@ -37,6 +37,7 @@
 
 
 
+
 //--------------------------------------------------------------------------------------------------------
 /**
  * @class ClusteredAnitaEvent
@@ -233,7 +234,7 @@ public:
     explicit Cluster(const BaseList::base& base) {
       latitude = base.latitude;
       longitude = base.longitude;
-      longitude = base.longitude;
+      altitude = base.altitude;
 
       AnitaGeomTool* geom = AnitaGeomTool::Instance();
       geom->getCartesianCoords(latitude, longitude, altitude, centre);
@@ -266,8 +267,6 @@ public:
 
 
   void initializeBaseList();
-  // less than...
-  Double_t logLikelihoodCut;
 
   Int_t getNumClusters(){
     return numClusters;
@@ -276,18 +275,16 @@ public:
   // Int_t histogramUnclusteredEvents(double& minLat, double& maxLat, double& minLon, double& maxLon);
   Int_t histogramUnclusteredEvents(Int_t& globalMaxBin);
   void recursivelyAddClusters(Int_t minBinContent);
-
+  void assignMCPointsToClusters();
 
   void mergeClusters();
   double llCut;
+  double maxDistCluster;
+
 private:
 
-  void kMeansPlusPlusInitialize(Int_t seed = 2016);
-  void maxDistanceInitialize(Int_t seed = 2016);
+  void assignSinglePointToCloserCluster(Int_t pointInd, Int_t isMC, Int_t clusterInd);
 
-  void updateClusterCentres();
-  void assignPointsToClosestCluster();
-  Double_t assignErrorValues();
   Cluster seedCluster(Point& point);
 
   std::vector<TH2D*> hUnclustereds;
@@ -312,6 +309,12 @@ private:
   Bool_t initialized;
   Double_t minimalImprovement;
 
+
+  // ok since things got very slow all of a sudden I need to speed them up
+  // since my interupts in lldb seem to fall inside the UsefulAdu5Pat functions
+  // I will cache the values.
+  // For each point I need the value for each cluster... use pair<pointInd, clusterInd>
+  // the figure of merit is the loglikelihood, with a distance d.
 
   AntarcticaMapPlotter* amp;
   RampdemReader* surfaceModel;

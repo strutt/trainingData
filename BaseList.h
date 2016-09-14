@@ -15,6 +15,12 @@ namespace BaseList{
       longitude = lon;
       altitude = alt;
     }
+    base(const TString& theName, double lat, double lon, double alt=0){
+      name = theName;
+      latitude = lat;
+      longitude = lon;
+      altitude = alt;
+    }
 
     TString name;
     TString dataSource;
@@ -24,6 +30,7 @@ namespace BaseList{
   };
 
   const base& getBase(UInt_t i);
+  void makeBaseList();
   size_t getNumBases();
 
 };
