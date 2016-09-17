@@ -198,25 +198,6 @@ int main(int argc, char *argv[]){
 
   clusterer.initializeBaseList();
 
-  const int numLLs = 10;
-  const double deltaLL = 100;
-  double llCuts[numLLs] = {100, 200, 300};
-  for(int j=0; j < numLLs; j++){
-    llCuts[j] = (j+1)*deltaLL;
-  }
-
-  for(int i=0; i < numLLs; i++){
-    clusterer.llCut = llCuts[i];
-    clusterer.resetClusters();
-    clusterer.recursivelyAddClusters(0);
-
-    std::cout << "********************************" << std::endl;
-    std::cout << "llCut = " << llCuts[i] << std::endl;
-    std::cout << "********************************" << std::endl;
-    clusterer.findClosestPointToClustersOfSizeOne();
-  }
-
-
 
   // clusterer.mergeClusters();
 
@@ -270,24 +251,78 @@ int main(int argc, char *argv[]){
     prog2++;
   }
 
-  clusterer.assignMCPointsToClusters();
+
+
+  // TGraph* grNumPoints = new TGraph();
+  TGraph* grNumMcSinglets = new TGraph();
+  std::vector<TGraph*> grNumIsolateds(clusterer.maxRetestClusterSize ,NULL);
+  std::vector<TGraph*> grNumBaseIsolateds(clusterer.maxRetestClusterSize ,NULL);
+  for(int i=0; i < clusterer.maxRetestClusterSize; i++){
+    grNumIsolateds.at(i) = new TGraph();
+    grNumBaseIsolateds.at(i) = new TGraph();
+  }
+
+  const int numLLs = 10;
+  // const int numLLs = 10;
+  const double deltaLL = 10;
+  double llCuts[numLLs] = {5, 10, 20, 40, 80, 160, 320, 640, 1280, 2560};
+  for(int j=0; j < numLLs; j++){
+    llCuts[j] = (j+1)*deltaLL;
+  }
+  Double_t sumMcWeights = clusterer.getSumOfMcWeights();
+  for(int i=0; i < numLLs; i++){
+    clusterer.llCut = llCuts[i];
+    clusterer.resetClusters();
+    clusterer.recursivelyAddClusters(0);
+
+    std::cout << "********************************" << std::endl;
+    std::cout << "llCut = " << llCuts[i] << std::endl;
+    std::cout << "********************************" << std::endl;
+    clusterer.findClosestPointToClustersOfSizeOne();
+
+    clusterer.assignMCPointsToClusters();
+
+    for(int j=0; j < clusterer.maxRetestClusterSize; j++){
+      grNumIsolateds.at(j)->SetPoint(grNumIsolateds.at(j)->GetN(),
+				     clusterer.llCut, clusterer.numIsolatedSmallClusters.at(j));
+      grNumBaseIsolateds.at(j)->SetPoint(grNumBaseIsolateds.at(j)->GetN(),
+					 clusterer.llCut, clusterer.numIsolatedSmallBaseClusters.at(j));
+    }
+    grNumMcSinglets->SetPoint(grNumMcSinglets->GetN(), llCuts[i], clusterer.numMcIsolatedSinglets/sumMcWeights);
+  }
+
+  for(int i=0; i < clusterer.maxRetestClusterSize; i++){
+    TString grName = TString::Format("grNumBaseIsolateds_%d", i+1);
+    grNumBaseIsolateds.at(i)->SetName(grName);
+    grNumBaseIsolateds.at(i)->Write();
+
+    if(i > 0){
+      grName = TString::Format("grNumIsolateds_%d", i+1);
+      grNumIsolateds.at(i)->SetName(grName);
+      grNumIsolateds.at(i)->Write();
+    }
+  }
+  grNumMcSinglets->SetName("grNumMcSinglets");
+  grNumMcSinglets->Write();
 
   outFile->cd();
 
-  for(int clusterInd=0; clusterInd < clusterer.getNumClusters(); clusterInd++){
-    TGraph* gr = clusterer.makeClusterSummaryTGraph(clusterInd);
+  // for(int clusterInd=0; clusterInd < clusterer.getNumClusters(); clusterInd++){
+  //   TGraph* gr = clusterer.makeClusterSummaryTGraph(clusterInd);
 
-    if(gr){
-      gr->Write();
-      delete gr;
-    }
-    else{
-      std::cerr << "??????? " << clusterInd << std::endl;
-    }
-  }
+  //   if(gr){
+  //     gr->Write();
+  //     delete gr;
+  //   }
+  //   else{
+  //     std::cerr << "??????? " << clusterInd << std::endl;
+  //   }
+  // }
 
+  outFileName.ReplaceAll("Plots", "HiddenPlots");
+  TFile* signalBox = new TFile(outFileName, "recreate");
   // no need to write?
-  TTree* clusterTree = clusterer.makeClusterSummaryTree(outFile);
+  TTree* clusterTree = clusterer.makeClusterSummaryTree(outFile, signalBox);
   // clusterTree->BuildIndex("eventNumber");
   std::cout << "Made clusterTree with " << clusterTree->GetEntries() << " entries." << std::endl;
 
@@ -297,10 +332,6 @@ int main(int argc, char *argv[]){
 
 
 
-  TH2D* hPeakSizes = new TH2D("hPeakSizes", "Map peaks; P1; P2", 1024, 0, 1, 1024, 0, 1);
-  TH2D* hDeltaPeakVsPeak = new TH2D("hDeltaPeakVsPeak", "Map peaks; P1; P2", 1024, -1, 1, 1024, 0, 1);
-  TH1D* hDeltaPeak = new TH1D("hDeltaPeak", "Map peaks; P1-P2", 1024, -1, 1);
-  TH1D* hDeltaPeak2 = new TH1D("hDeltaPeak2", "Map peaks; p1/(P1-P2)", 1024, -1, 1);
   for(Long64_t entry = startEntry; entry < maxEntry; entry++){
     clusterTree->GetEntry(entry);
 
@@ -308,19 +339,7 @@ int main(int argc, char *argv[]){
       eventSummaryChain->GetEntryWithIndex(clusteredEvent->eventNumber);
       if(clusteredEvent->eventNumber == eventSummary->eventNumber){
 
-	// std::cout << clusteredEvent->eventNumber  << "\t" << eventSummary->eventNumber << "\t";
-	Double_t hPeak = eventSummary->peak[0][0].value;
-	Double_t vPeak = eventSummary->peak[1][0].value;
-	Int_t peakPol = hPeak > vPeak ? 0 : 1;
-	// std::cout << eventSummary->peak[0][0].value  << "\t" <<  eventSummary->peak[1][0].value << std::endl;
-	// std::cout << eventSummary->peak[peakPol][0].value  << "\t" << eventSummary->peak[peakPol][1].value << std::endl;
-	Double_t p1 = eventSummary->peak[peakPol][0].value;
-	Double_t p2 = eventSummary->peak[peakPol][1].value;
-	hPeakSizes->Fill(p1, p2);
-	hDeltaPeakVsPeak->Fill(p1-p2, p2);
-	hDeltaPeak->Fill(p1-p2);
-	hDeltaPeak2->Fill((p1-p2)/p1);
-	// std::cout << eventSummary->peak[1][0].value  << std::endl;
+	std::cout << clusteredEvent->eventNumber  << "\t" << eventSummary->eventNumber << std::endl;
       }
     }
   }

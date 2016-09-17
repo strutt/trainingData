@@ -77,7 +77,8 @@ int main(int argc, char *argv[])
     //   fileName = TString::Format("rayleigh/reconstructFilteredMinBiasPlots_%d_%d_*.root", run, filterInd);
     // }
     // else{
-    fileName = TString::Format("filter260-370-400-762-5peaks/reconstructMinBiasPlots_%d_*.root", run);
+    fileName = TString::Format("filter260and370/reconstructMinBiasPlots_%d_*.root", run);
+    // fileName = TString::Format("filter260-370-400-762-5peaks/reconstructMinBiasPlots_%d_*.root", run);
     // }
     eventSummaryChain->Add(fileName);
 
@@ -110,6 +111,8 @@ int main(int argc, char *argv[])
 
   Double_t maxPeakToPeakRatio[NUM_POL];
   dataQualityChain->SetBranchAddress("maxPeakToPeakRatio", maxPeakToPeakRatio);
+  Double_t maxAsym[NUM_POL];
+  dataQualityChain->SetBranchAddress("maxAsym", maxAsym);
   Double_t theMaxVolts[NUM_POL];
   dataQualityChain->SetBranchAddress("theMaxVolts", theMaxVolts);
   Double_t theMinVolts[NUM_POL];
@@ -244,8 +247,8 @@ int main(int argc, char *argv[])
 
 
       maxV = TMath::Max(theMaxVolts[0],  theMaxVolts[1]);
-      minV = TMath::Max(theMinVolts[0],  theMinVolts[1]);
-      absSumMaxMin = maxV + minV;
+      minV = TMath::Min(theMinVolts[0],  theMinVolts[1]);
+      absSumMaxMin = TMath::Max(TMath::Abs(maxAsym[0]),  TMath::Abs(maxAsym[1]));
       surfSaturation = AnalysisCuts::applySurfSaturationCutBetter(maxV, minV, absSumMaxMin);
 
       theMaxPeakToPeakRatio = TMath::Max(maxPeakToPeakRatio[0], maxPeakToPeakRatio[1]);
